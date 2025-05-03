@@ -151,6 +151,6 @@ try:
         "Value": [URR, kt_v]
     }))
 except Exception as e:
-    st.warning(f"Waiting for input on Urea and Post Urea: {e}")
+    st.warning(f"Waiting for input on Urea and Post: {e}")
 
 
