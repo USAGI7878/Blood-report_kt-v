@@ -4,9 +4,60 @@ import fitz  # PyMuPDF
 import pandas as pd
 import re
 import math
-import io
 
-st.title("🧪 Batch Lab Report Analyzer (PDF)")
+st.title("🧪 Medical Lab Report Analyzer (PDF)")
+
+# 初始化变量
+raw_text = ""
+results = []
+
+# 上传多个文件
+uploaded_files = st.file_uploader("Upload Lab Reports (PDF)", type="pdf", accept_multiple_files=True)
+
+# 单个病人的报告分析
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        raw_text = ""
+        with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
+            for page in doc:
+                raw_text += page.get_text().replace("\n", " ")
+        
+        st.success(f"File '{uploaded_file.name}' loaded. Analyzing...")
+
+        # 分析 PDF 文本
+        current_results = []
+        for item, (unit, low, high) in items_info.items():
+            patterns = [item] + reverse_alias.get(item, [])
+            value_found = False
+            for pattern in patterns:
+                match = re.search(rf"{pattern}.*?([\d.]+)", raw_text, re.IGNORECASE)
+                if match:
+                    try:
+                        value = float(match.group(1))
+                        mark = "*" if (low and value < low) or (high and value > high) else ""
+                        ref = f"{low}-{high}" if low and high else "-"
+                        current_results.append([item, f"{value}{mark}", ref])
+                    except:
+                        current_results.append([item, "⚠️ Failed to parse", "-"])
+                    value_found = True
+                    break
+            if not value_found:
+                current_results.append([item, "Not found", "-"])
+
+        # Display Results for the Current Patient
+        df = pd.DataFrame(current_results, columns=["Test", "Value", "Reference Range"])
+        st.subheader(f"🧪 Lab Result Analysis for {uploaded_file.name}")
+        st.dataframe(df)
+
+        # Serology results (optional)
+        if raw_text:
+            sero = extract_serology(raw_text)
+            st.subheader(f"🧬 Serology Results for {uploaded_file.name}")
+            st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
+
+# 如果只上传一个病人的报告文件
+else:
+    st.info("Please upload a lab report file to begin analysis.")
 
 items_info = {
     "Urea": ("mmol/L", 3.0, 9.0),
