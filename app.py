@@ -6,7 +6,7 @@ import math
 st.markdown("""
     <style>
         .stApp {
-            background-image: url('https://github.com/USAGI7878/Blood-report_kt-v/app.py/未命名的设计.png'); /* 替换成你喜欢的猫猫+医学+赛博图 */
+            background-image: url('https://github.com/USAGI7878/Blood-report_kt-v/app.py/main/未命名的设计.png'); /* 替换成你喜欢的猫猫+医学+赛博图 */
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
