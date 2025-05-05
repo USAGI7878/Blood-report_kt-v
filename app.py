@@ -214,7 +214,7 @@ if user_question:
 import streamlit as st
 import random
 
-st.title("🐾 Cat Interaction Game )
+st.title("🐾 Cat Interaction Game ")
 
 # 初始化状态
 if "affection" not in st.session_state:
