@@ -193,5 +193,73 @@ if user_question:
 
     with st.chat_message("assistant"):
         st.write(response)
+import streamlit as st
+import random
+
+st.title("🐾 Cat Interaction Game - 撸猫日常")
+
+# 初始化状态
+if "affection" not in st.session_state:
+    st.session_state.affection = 0
+    st.session_state.cat_mood = "neutral"
+    st.session_state.cat_coming = False  # 新增的状态：猫咪是否主动过来
+
+# 猫咪回应设定
+cat_responses = {
+    "head": ["😺 Purr... loves head pats!", "😸 Happy kitty~"],
+    "chin": ["😽 Leans in for more...", "😻 Favorite spot!"],
+    "tail": ["🙀 Hisses! Don't touch the tail!", "😾 Annoyed..."],
+    "butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
+}
+
+# 选择摸哪里
+part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
+
+# 点按钮开始摸猫
+if st.button("Pet the cat 🐱"):
+    response = random.choice(cat_responses[part])
+    st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
+    
+    # 改变亲密度与情绪
+    if part in ["head", "chin"]:
+        st.session_state.affection += 1
+        st.session_state.cat_mood = "happy"
+    elif part == "butt":
+        st.session_state.affection += random.choice([0, 1])
+        st.session_state.cat_mood = "confused"
+    else:
+        st.session_state.affection -= 1
+        st.session_state.cat_mood = "grumpy"
+
+    # 判断亲密值是否达到 10
+    if st.session_state.affection >= 10 and not st.session_state.cat_coming:
+        st.session_state.cat_coming = True
+        st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
+
+# 显示亲密值
+st.metric("🐾 Affection Level", st.session_state.affection)
+
+# 猫咪情绪表情
+cat_faces = {
+    "happy": "😺",
+    "neutral": "😐",
+    "grumpy": "😾",
+    "confused": "😼"
+}
+st.write(f"Cat Mood: {cat_faces[st.session_state.cat_mood]}")
+
+# 显示猫咪图片（根据情绪）
+cat_images = {
+    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  # 用实际的 URL 替换
+    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  # 用实际的 URL 替换
+    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  # 用实际的 URL 替换
+    "confused": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fmakerworld.com%2Fen%2Fmodels%2F921094-confused-cat-meme-cover-of-a1-a1mini-extruder&psig=AOvVaw3nlTarJCdIooX0UGKNezU4&ust=1746541033453000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCLD3ucLCjI0DFQAAAAAdAAAAABAE"  # 用实际的 URL 替换
+}
+}
+st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
+
+# 如果亲密值达到 10，显示猫咪主动过来的图
+if st.session_state.cat_coming:
+    st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
 
 
