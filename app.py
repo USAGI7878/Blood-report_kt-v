@@ -12,9 +12,27 @@ st.markdown("""
             background-attachment: fixed;
         }
         .block-container {
-            background-color: rgba(255, 255, 255, 0.85);
+            background-color: rgba(20, 20, 20, 0.85);
             border-radius: 15px;
             padding: 2rem;
+            color: white;
+        }
+        .stTitle, .stSubheader, .stDataFrame, .stText, .stMetric {
+            color: white;
+        }
+        .stButton > button {
+            background-color: #555;
+            color: white;
+        }
+        .stRadio > div > label {
+            color: white;
+        }
+        .stChatMessage {
+            background-color: #333;
+            color: white;
+        }
+        .stFileUploader > div {
+            color: white;
         }
     </style>
 """, unsafe_allow_html=True)
