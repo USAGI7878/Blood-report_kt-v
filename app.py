@@ -240,13 +240,14 @@ if st.button("Pet the cat 🐱"):
 st.metric("🐾 Affection Level", st.session_state.affection)
 
 # 猫咪情绪表情
-cat_faces = {
-    "happy": "😺",
-    "neutral": "😐",
-    "grumpy": "😾",
-    "confused": "😼"
+cat_images = {
+    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  # 用实际的 URL 替换
+    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  # 用实际的 URL 替换
+    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  # 用实际的 URL 替换
+    "confused": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fmakerworld.com%2Fen%2Fmodels%2F921094-confused-cat-meme-cover-of-a1-a1mini-extruder&psig=AOvVaw3nlTarJCdIooX0UGKNezU4&ust=1746541033453000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCLD3ucLCjI0DFQAAAAAdAAAAABAE"  # 用实际的 URL 替换
 }
-st.write(f"Cat Mood: {cat_faces[st.session_state.cat_mood]}")
+
+st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
 
 # 显示猫咪图片（根据情绪）
 cat_images = {
