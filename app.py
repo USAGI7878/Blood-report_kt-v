@@ -3,6 +3,21 @@ import fitz  # PyMuPDF
 import pandas as pd
 import re
 import math
+st.markdown("""
+    <style>
+        .stApp {
+            background-image: url('https://i.imgur.com/5xntUpt.jpeg'); /* 替换成你喜欢的猫猫+医学+赛博图 */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .block-container {
+            background-color: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 st.title("🧪 Medical Lab Report Analyzer (PDF)")
 
@@ -152,5 +167,31 @@ try:
     }))
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
+# --- AI Bot Section ---
+st.subheader("🤖 Ask the AI Assistant")
+
+user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
+if user_question:
+    with st.chat_message("user"):
+        st.write(user_question)
+
+    # 这里我们用简单规则生成答案，你也可以之后整合更强大的模型
+    response = ""
+
+    if "kt/v" in user_question.lower():
+        response = "KT/V 是透析充分性指标，建议维持 KT/V > 1.2，表示透析效果良好。"
+    elif "urr" in user_question.lower():
+        response = "URR（尿素减少率）计算尿素清除率，通常 URR > 65% 被认为是足够的透析。"
+    elif "how to use" in user_question.lower() or "upload" in user_question.lower():
+        response = "上传 PDF 后，系统会自动提取血液检查与血清学结果，并计算 KT/V。"
+    elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
+        response = "Haemoglobin 是血红蛋白指标，反映贫血情况，透析病人建议维持在 10-12 g/dL。"
+    elif "phosphate" in user_question.lower():
+        response = "磷过高会导致骨病，建议控制在 1.45 mmol/L 以下，可通过饮食与磷结合剂控制。"
+    else:
+        response = "目前我只能回答与 KT/V、URR、基本血检和系统操作有关的问题喔！"
+
+    with st.chat_message("assistant"):
+        st.write(response)
 
 
