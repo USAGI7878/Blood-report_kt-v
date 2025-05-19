@@ -29,7 +29,7 @@ In dialysis units, we often need to manually calculate and track KT/V, serology 
 
 ## 📷 Preview
 
-![screenshot](./preview.png) 
+![screenshot](screen.png) 
 
 ## 🧪 Try It Now
 
