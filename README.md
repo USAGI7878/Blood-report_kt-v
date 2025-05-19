@@ -1,6 +1,6 @@
 # 🩸 Blood Report KT/V Analyzer
 
-A simple, lightweight web app to help dialysis unit nurses and clinicians **analyze KT/V and serology blood test reports** more efficiently.
+A simple, lightweight web app to help dialysis unit nurses **analyze KT/V and serology blood test reports** more efficiently.
 
 🚑 Designed with real clinical scenarios in mind — created by a nurse with software aspirations.
 
