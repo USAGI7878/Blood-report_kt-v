@@ -1,5 +1,5 @@
 import streamlit as st
-import fitz  # PyMuPDF
+import fitz  
 import pandas as pd
 import re
 import math
@@ -39,11 +39,10 @@ st.markdown("""
 
 st.title("🧪 Medical Lab Report Analyzer (PDF)")
 
-# 初始化变量
 raw_text = ""
 results = []
 
-# 初始化项目信息和别名
+
 items_info = {
     "Urea": ("mmol/L", 3.0, 9.0),
     "Urea - Post Dialysis": ("mmol/L", 3.0, 9.0),
@@ -85,13 +84,13 @@ aliases = {
 
 }
 
-# 构建反向别名映射
+
 reverse_alias = {}
 for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
 
-# 上传文件并解析
+
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 if uploaded_file is not None:
     with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
@@ -102,7 +101,7 @@ if uploaded_file is not None:
     with st.expander("📜 Raw Text from PDF"):
         st.text(raw_text)
 
-# 分析 PDF 文本
+
 if raw_text:
     for item, (unit, low, high) in items_info.items():
         patterns = [item] + reverse_alias.get(item, [])
@@ -127,7 +126,7 @@ if raw_text:
     st.dataframe(df)
 
 results_dict = {row[0]: row[1] for row in results}
-# Serology 提取函数
+
 def interpret_result(text):
     if "not detected" in text.lower() or "negative" in text.lower() or "non reactive" in text.lower():
         return "Negative"
@@ -151,17 +150,17 @@ def extract_serology(text):
     hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
     results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
 
-    results["Hep B Core antibody (HBcAb)"] = "Not done"  # 预留项目
+    results["Hep B Core antibody (HBcAb)"] = "Not done"  
     return results
 
-# 显示 Serology 结果
+#show result 
 if raw_text:
     sero = extract_serology(raw_text)
     st.subheader("🧬 Serology Results")
     st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
 
 
-# 用户输入参数
+# user input data 
 dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
 uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
 post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
@@ -193,7 +192,7 @@ if user_question:
     with st.chat_message("user"):
         st.write(user_question)
 
-    # 这里我们用简单规则生成答案，你也可以之后整合更强大的模型
+    #Bot's answer 
     response = ""
 
     if "kt/v" in user_question.lower():
@@ -211,18 +210,17 @@ if user_question:
 
     with st.chat_message("assistant"):
         st.write(response)
-import streamlit as st
 import random
 
-st.title("🐾 Cat Interaction Game ")
+st.title("🐾 Relax time ! ")
 
-# 初始化状态
+
 if "affection" not in st.session_state:
     st.session_state.affection = 0
     st.session_state.cat_mood = "neutral"
-    st.session_state.cat_coming = False  # 新增的状态：猫咪是否主动过来
+    st.session_state.cat_coming = False  #
 
-# 猫咪回应设定
+# cat resposes 
 cat_responses = {
     "head": ["😺 Purr... loves head pats!", "😸 Happy kitty~"],
     "chin": ["😽 Leans in for more...", "😻 Favorite spot!"],
@@ -230,15 +228,15 @@ cat_responses = {
     "butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
 }
 
-# 选择摸哪里
+
 part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
 
-# 点按钮开始摸猫
+# press button to start the game 
 if st.button("Pet the cat 🐱"):
     response = random.choice(cat_responses[part])
     st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
     
-    # 改变亲密度与情绪
+    # changes 
     if part in ["head", "chin"]:
         st.session_state.affection += 1
         st.session_state.cat_mood = "happy"
@@ -249,26 +247,26 @@ if st.button("Pet the cat 🐱"):
         st.session_state.affection -= 1
         st.session_state.cat_mood = "grumpy"
 
-    # 判断亲密值是否达到 10
+    # hit the target
     if st.session_state.affection >= 10 and not st.session_state.cat_coming:
         st.session_state.cat_coming = True
         st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
 
-# 显示亲密值
+#show affection level
 st.metric("🐾 Affection Level", st.session_state.affection)
 
-# 猫咪情绪表情
+# cat emotion with pictures 
 cat_images = {
-    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  # 用实际的 URL 替换
-    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  # 用实际的 URL 替换
-    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  # 用实际的 URL 替换
+    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
+    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  
+    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
     "confused": "https://i.imgflip.com/64ngqc.png"  # 用实际的 URL 替换
 }
 
 st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
 
 
-# 如果亲密值达到 10，显示猫咪主动过来的图
+# to show max affection level 
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
 
