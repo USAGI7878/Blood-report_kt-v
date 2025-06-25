@@ -1,4 +1,5 @@
-import streamlit as st
+import streamlit as stAdd commentMore actions
+import fitz  
 import fitz  
 import pandas as pd
 import re
@@ -39,9 +40,11 @@ st.markdown("""
 
 st.title("🧪 Medical Lab Report Analyzer (PDF)")
 
+
 raw_text = ""
 results = []
 
+# identify key and value 
 
 items_info = {
     "Urea": ("mmol/L", 3.0, 9.0),
@@ -84,12 +87,14 @@ aliases = {
 
 }
 
+# create key
 
 reverse_alias = {}
 for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
 
+# upload file 
 
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 if uploaded_file is not None:
@@ -101,6 +106,7 @@ if uploaded_file is not None:
     with st.expander("📜 Raw Text from PDF"):
         st.text(raw_text)
 
+# analyze PDF data
 
 if raw_text:
     for item, (unit, low, high) in items_info.items():
@@ -126,6 +132,7 @@ if raw_text:
     st.dataframe(df)
 
 results_dict = {row[0]: row[1] for row in results}
+# Serology data extraction
 
 def interpret_result(text):
     if "not detected" in text.lower() or "negative" in text.lower() or "non reactive" in text.lower():
@@ -151,6 +158,7 @@ def extract_serology(text):
     results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
 
     results["Hep B Core antibody (HBcAb)"] = "Not done"  
+    results["Hep B Core antibody (HBcAb)"] = "Not done"  
     return results
 
 #show result 
@@ -158,6 +166,7 @@ if raw_text:
     sero = extract_serology(raw_text)
     st.subheader("🧬 Serology Results")
     st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
+
 
 
 # user input data 
@@ -184,14 +193,45 @@ try:
     }))
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
+# --- Bot Section ---
+st.subheader("🤖 Ask the BOT Assistant")
+
+user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
+if user_question:
+    with st.chat_message("user"):
+        st.write(user_question)
+
+
+    #Bot's answer 
+   response = ""
+
+if "kt/v" in user_question.lower():
+    response = "KT/V is an indicator of dialysis adequacy. It is recommended to maintain KT/V > 1.2, which indicates effective dialysis."
+elif "urr" in user_question.lower():
+    response = "URR (Urea Reduction Ratio) calculates urea clearance. A URR > 65% is generally considered adequate dialysis."
+elif "how to use" in user_question.lower() or "upload" in user_question.lower():
+    response = "After uploading the PDF, the system will automatically extract blood test and serology results and calculate the KT/V."
+elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
+    response = "Haemoglobin is a key indicator of anemia. For dialysis patients, it is recommended to maintain it between 10-12 g/dL."
+elif "phosphate" in user_question.lower():
+    response = "High phosphate levels can lead to bone disease. It is recommended to keep it below 1.45 mmol/L through diet and phosphate binders."
+else:
+    response = "Currently, I can only answer questions related to KT/V, URR, basic blood tests, and system usage!"
+
+
+    with st.chat_message("assistant"):
+        st.write(response)
 import random
-#cat game
+
+st.title("🐾 Cat Interaction Game ")
 st.title("🐾 Relax time ! ")
 
 
+# original mood 
 if "affection" not in st.session_state:
     st.session_state.affection = 0
     st.session_state.cat_mood = "neutral"
+    st.session_state.cat_coming = False  # 
     st.session_state.cat_coming = False  #
 
 # cat resposes 
@@ -202,14 +242,13 @@ cat_responses = {
     "butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
 }
 
-
 part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
 
 # press button to start the game 
 if st.button("Pet the cat 🐱"):
     response = random.choice(cat_responses[part])
     st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
-    
+
     # changes 
     if part in ["head", "chin"]:
         st.session_state.affection += 1
@@ -226,21 +265,26 @@ if st.button("Pet the cat 🐱"):
         st.session_state.cat_coming = True
         st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
 
+
 #show affection level
 st.metric("🐾 Affection Level", st.session_state.affection)
+
 
 # cat emotion with pictures 
 cat_images = {
     "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
+    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
+    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
+    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
     "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  
     "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
-    "confused": "https://i.imgflip.com/64ngqc.png"  # 用实际的 URL 替换
+    "confused": "https://i.imgflip.com/64ngqc.png"  
 }
 
 st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
 
 
-# to show max affection level 
+# to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
 
