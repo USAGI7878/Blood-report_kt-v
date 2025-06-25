@@ -194,6 +194,7 @@ try:
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
 # --- Bot Section ---
+import streamlit as st
 st.subheader("🤖 Ask the BOT Assistant")
 
 user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
