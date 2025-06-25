@@ -201,24 +201,24 @@ if user_question:
     with st.chat_message("user"):
         st.write(user_question)
 
-    # Bot's answer
     response = ""
 
     if "kt/v" in user_question.lower():
-        response = "KT/V is an indicator of dialysis adequacy. It is recommended to maintain KT/V > 1.2, which indicates effective dialysis."
+        response = "KT/V is ... > 1.2"
     elif "urr" in user_question.lower():
-        response = "URR (Urea Reduction Ratio) calculates urea clearance. A URR > 65% is generally considered adequate dialysis."
+        response = "URR ... > 65%"
     elif "how to use" in user_question.lower() or "upload" in user_question.lower():
-        response = "After uploading the PDF, the system will automatically extract blood test and serology results and calculate the KT/V."
+        response = "After uploading the PDF ..."
     elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
-        response = "Haemoglobin is a key indicator of anemia. For dialysis patients, it is recommended to maintain it between 10-12 g/dL."
+        response = "Haemoglobin ... 10-12 g/dL"
     elif "phosphate" in user_question.lower():
-        response = "High phosphate levels can lead to bone disease. It is recommended to keep it below 1.45 mmol/L through diet and phosphate binders."
+        response = "High phosphate ... below 1.45 mmol/L"
     else:
-        response = "Currently, I can only answer questions related to KT/V, URR, basic blood tests, and system usage!"
+        response = "Currently, I can only answer questions related to KT/V, URR..."
 
     with st.chat_message("assistant"):
         st.write(response)
+
 #mini game 
 import random
 
