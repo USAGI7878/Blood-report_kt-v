@@ -46,9 +46,9 @@ results = []
 # identify key and value 
 
 items_info = {
-    "Urea": ("mmol/L", 3.0, 9.0),
-    "Urea - Post Dialysis": ("mmol/L", 3.0, 9.0),
     "Creatinine": ("µmol/L", 44, 110),
+    "Uric Acid":("µmol/L", 120, 420),
+    "Urea": ("mmol/L", 3.0, 9.0),
     "Potassium": ("mmol/L", 3.5, 5.1),
     "Sodium": ("mmol/L", 135, 145),
     "Albumin": ("g/L", 35, 50),
@@ -76,6 +76,7 @@ items_info = {
     "HDL-C": ("mmol/L", None, None),
     "Intact Parathyroid Hormone": ("pg/mL", 1.6, 6.9),
     "Lymphocytes": ("HSD/CU mm", 1.0, 4.0),
+    "Urea - Post Dialysis": ("mmol/L", 3.0, 9.0),
     "GGT": ("U/L", None, None),
 }
 
