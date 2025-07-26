@@ -54,6 +54,7 @@ items_info = {
     "Albumin": ("g/L", 35, 50),
     "Bilirubin": ("µmol/L", None, None),
     "Calcium": ("mmol/L", 2.10, 2.55),
+    "Corrected Calcium": ("mmol/L", 2.10, 2.55),
     "Phosphate": ("mmol/L", 0.65, 1.45),
     "Alkaline Phosphatase": ("U/L", 40, 130),
     "ALT": ("U/L", None, None),
