@@ -85,6 +85,8 @@ aliases = {
     "Urea": ["Blood Urea", "Urea (BUN)"],
     "Urea - Post Dialysis": ["Postdialysis Urea", "Post BUN"],
     "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
+    "ALT": ["谷草转氨基酶", "ALT"],
+    "AST": ["谷丙转氨基酶", "ALT"],
 
 }
 
