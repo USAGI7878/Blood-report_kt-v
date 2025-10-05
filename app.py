@@ -4,37 +4,6 @@ import pandas as pd
 import re
 import math
 import easyocr
-from PIL import Image
-st.header("📷 Dialysis Machine OCR")
-
-uploaded_img = st.file_uploader("Upload a dialysis machine photo", type=["jpg","jpeg","png"], key="img")
-if uploaded_img:
-    image = Image.open(uploaded_img)
-    st.image(image, caption="Uploaded Photo", use_column_width=True)
-
-    reader = easyocr.Reader(['en'])  # 如果透析机界面有中文，可以加 'ch_sim'
-    results = reader.readtext(uploaded_img)
-
-    ocr_dict = {}
-    st.write("🔍 OCR Results:")
-    for (bbox, text, prob) in results:
-        st.write(f"{text} (Confidence: {prob:.2f})")
-        # 尝试抓数字
-        match = re.search(r"([\d.]+)", text)
-        if match:
-            key = f"Value_{len(ocr_dict)+1}"
-            ocr_dict[key] = match.group(1)
-
-    st.json(ocr_dict)
-
-if uploaded_img and ocr_dict:
-    st.subheader("📝 Confirm Extracted Data")
-    df = pd.DataFrame(list(ocr_dict.items()), columns=["Field", "Value"])
-    edited_df = st.data_editor(df, num_rows="dynamic")  # 可人工修改
-
-    if st.button("🚀 Send to Origin"):
-        st.success("Data ready to send to Origin automation script!")
-        # TODO: 这里调用 selenium 脚本，把 edited_df["Value"] 按顺序填入 Origin
 
 st.markdown("""
     <style>
@@ -323,6 +292,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
