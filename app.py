@@ -3,7 +3,7 @@ import fitz
 import pandas as pd
 import re
 import math
-import easyocr
+#import easyocr
 
 st.markdown("""
     <style>
@@ -292,6 +292,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
