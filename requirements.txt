@@ -2,3 +2,6 @@ streamlit
 PyMuPDF
 pandas
 openpyxl
+easyocr
+torch
+opencv-python-headless
