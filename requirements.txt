@@ -2,6 +2,6 @@ streamlit
 PyMuPDF
 pandas
 openpyxl
-easyocr
-torch
-opencv-python-headless
+easyocr==1.7.1
+torch==2.0.1
+opencv-python-headless==4.10.0.84
