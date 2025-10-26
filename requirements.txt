@@ -1,6 +1,7 @@
 streamlit
-pymupdf
+PyMuPDF==1.24.4
 pandas
-easyocr
+openpyxl
 torch
 opencv-python-headless
+easyocr
