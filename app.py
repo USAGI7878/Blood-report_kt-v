@@ -204,13 +204,37 @@ try:
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
 # --- Bot Section ---
+# --- Bot Section ---
 import streamlit as st
+
 st.subheader("🤖 Ask the BOT Assistant")
 
 user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
+
 if user_question:
-     st.chat_message("user"):
-        st.write(user_question)
+    # 用户消息
+    with st.chat_message("user"):
+        st.write(user_question)  # 显示使用者输入的内容
+
+    # 生成回应
+    response = ""
+
+    if "kt/v" in user_question.lower():
+        response = "KT/V is a measure of dialysis adequacy. Target value should be > 1.2."
+    elif "urr" in user_question.lower():
+        response = "URR (Urea Reduction Ratio) indicates dialysis efficiency. It should be > 65%."
+    elif "how to use" in user_question.lower() or "upload" in user_question.lower():
+        response = "After uploading your PDF, the system extracts lab data and calculates KT/V and URR."
+    elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
+        response = "Haemoglobin normal range is 10–12 g/dL for dialysis patients."
+    elif "phosphate" in user_question.lower():
+        response = "High phosphate levels (>1.45 mmol/L) may need phosphate binders or diet control."
+    else:
+        response = "Currently, I can only answer questions related to KT/V, URR, or basic lab tests."
+
+    # 助手消息
+    with st.chat_message("assistant"):
+        st.write(response)
 
     response = ""
 
@@ -297,6 +321,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
