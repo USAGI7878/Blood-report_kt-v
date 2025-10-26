@@ -209,7 +209,7 @@ st.subheader("🤖 Ask the BOT Assistant")
 
 user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
 if user_question:
-    with st.chat_message("user"):
+     st.chat_message("user"):
         st.write(user_question)
 
     response = ""
@@ -227,7 +227,7 @@ if user_question:
     else:
         response = "Currently, I can only answer questions related to KT/V, URR..."
 
-    with st.chat_message("assistant"):
+     st.chat_message("assistant"):
         st.write(response)
 
 #mini game 
@@ -280,7 +280,7 @@ if st.button("Pet the cat 🐱"):
 st.metric("🐾 Affection Level", st.session_state.affection)
 
 
-# cat emotion with pictures 
+# cat emotion  pictures 
 cat_images = {
     "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
     "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
@@ -297,6 +297,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
