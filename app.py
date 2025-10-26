@@ -3,7 +3,7 @@ import fitz
 import pandas as pd
 import re
 import math
-#import easyocr
+import easyocr
 
 st.markdown("""
     <style>
@@ -102,19 +102,37 @@ for key, alist in aliases.items():
 # upload file 
 
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
+
 if uploaded_file is not None:
     st.write("✅ File uploaded:", uploaded_file.name)
     st.write("📦 File size (bytes):", uploaded_file.size)
-if uploaded_file is not None:
-    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
-        for page in doc:
-            raw_text += page.get_text("text").replace("\n", " ")
-        st.success(f"{doc.page_count} pages loaded.")
-        
+
+    # 先读取 PDF 成 bytes
+    file_bytes = uploaded_file.read()
+
+    raw_text = ""
+    reader = easyocr.Reader(['en'])
+
+    # 用 PyMuPDF 打开 PDF
+    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        for i, page in enumerate(doc):
+            text = page.get_text("text")
+            if not text.strip():
+                # 如果这一页没有文字，就用 OCR 识别
+                pix = page.get_pixmap()
+                img_bytes = pix.tobytes("png")
+                ocr_result = reader.readtext(img_bytes, detail=0)
+                text = " ".join(ocr_result)
+                st.warning(f"OCR used on page {i+1}")
+            else:
+                st.info(f"Text extracted from page {i+1}")
+            raw_text += text.replace("\n", " ")
+
+        st.session_state["raw_text"] = raw_text  # ✅ 保存文字
+        st.success(f"{doc.page_count} pages loaded (with OCR if needed).")
 
     with st.expander("📜 Raw Text from PDF"):
         st.text(raw_text)
-
 
 # analyze PDF data
 
@@ -303,6 +321,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
