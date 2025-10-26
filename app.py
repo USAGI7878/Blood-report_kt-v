@@ -204,7 +204,7 @@ try:
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
 # --- Bot Section ---
-# --- Bot Section ---
+
 import streamlit as st
 
 st.subheader("🤖 Ask the BOT Assistant")
@@ -212,9 +212,9 @@ st.subheader("🤖 Ask the BOT Assistant")
 user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
 
 if user_question:
-    # 用户消息
+    # 显示使用者输入的内容
     with st.chat_message("user"):
-        st.write(user_question)  # 显示使用者输入的内容
+        st.write(user_question)
 
     # 生成回应
     response = ""
@@ -232,26 +232,8 @@ if user_question:
     else:
         response = "Currently, I can only answer questions related to KT/V, URR, or basic lab tests."
 
-    # 助手消息
+    # 助手回答（注意：这里必须缩进 4 个空格，与上面对齐）
     with st.chat_message("assistant"):
-        st.write(response)
-
-    response = ""
-
-    if "kt/v" in user_question.lower():
-        response = "KT/V is ... > 1.2"
-    elif "urr" in user_question.lower():
-        response = "URR ... > 65%"
-    elif "how to use" in user_question.lower() or "upload" in user_question.lower():
-        response = "After uploading the PDF ..."
-    elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
-        response = "Haemoglobin ... 10-12 g/dL"
-    elif "phosphate" in user_question.lower():
-        response = "High phosphate ... below 1.45 mmol/L"
-    else:
-        response = "Currently, I can only answer questions related to KT/V, URR..."
-
-     st.chat_message("assistant"):
         st.write(response)
 
 #mini game 
@@ -321,6 +303,7 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
