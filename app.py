@@ -116,7 +116,7 @@ if raw_text:
         patterns = [item] + reverse_alias.get(item, [])
         value_found = False
         for pattern in patterns:
-            match = re.search(rf"{pattern}\D*([\d.]+)", raw_text, re.IGNORECASE)
+            match = re.search(rf"{pattern}\s+([\d.]+)\s*(x10\^9/L|10\^9/L|mmol/L|µmol/L|g/L|U/L)", raw_text, re.IGNORECASE)
             if match:
                 try:
                     value = float(match.group(1))
@@ -198,5 +198,6 @@ try:
     }))
 except Exception as e:
     st.warning(f"Waiting for Urea & Post Urea values: {e}")
+
 
 
