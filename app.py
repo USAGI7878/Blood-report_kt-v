@@ -134,6 +134,48 @@ if raw_text:
     st.subheader("🧪 Lab Result Analysis")
     st.dataframe(df)
 
+# --- Serology Data Extraction ---
+def interpret_result(text):
+    """Interpret positive/negative keywords in text."""
+    if any(word in text.lower() for word in ["not detected", "negative", "non reactive"]):
+        return "Negative"
+    elif any(word in text.lower() for word in ["detected", "positive", "reactive"]):
+        return "Positive"
+    else:
+        return "Not done"
+
+def extract_serology(text):
+    """Extract serology test results from report text."""
+    results = {}
+
+    # HIV
+    hiv = re.search(r"HIV.*?(Not Detected|Detected|Negative|Positive|Reactive|Non Reactive)", text, re.IGNORECASE)
+    results["Anti HIV antibody"] = interpret_result(hiv.group(1)) if hiv else "Not done"
+
+    # Hepatitis B surface antigen
+    hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
+    results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
+
+    # Hepatitis B surface antibody (HBsAb) — 可数值阳性
+    hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
+    results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
+
+    # Hepatitis C antibody
+    hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
+    results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
+
+    # 可补充项目（如果未来报告新增）
+    results["Hep B Core antibody (HBcAb)"] = "Not done"
+
+    return results
+
+# --- 显示 Serology 结果 ---
+if raw_text:
+    sero = extract_serology(raw_text)
+    st.subheader("🧬 Serology Results")
+    st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
+
+
 # --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
 
@@ -157,3 +199,4 @@ try:
     }))
 except Exception as e:
     st.warning(f"Waiting for Urea & Post Urea values: {e}")
+
