@@ -57,8 +57,8 @@ items_info = {
     "Corrected Calcium": ("mmol/L", 2.10, 2.55),
     "Phosphate": ("mmol/L", 0.65, 1.45),
     "Alkaline Phosphatase": ("U/L", 40, 130),
-    "ALT": ("U/L", None, None),
     "AST": ("U/L", None, None),
+    "ALT": ("U/L", None, None),
     "Haemoglobin": ("g/dL", 120, 150),
     "White Cell Count": ("µl", None, None),
     "Hypochromic cells": ("%", None, None),
@@ -85,8 +85,8 @@ aliases = {
     "Urea": ["Blood Urea", "Urea (BUN)"],
     "Urea - Post Dialysis": ["Postdialysis Urea", "Post BUN"],
     "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
-    "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)"],
-    "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)"],
+    "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)","ALT"],
+    "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)","AST"],
 
 }
 
@@ -290,5 +290,6 @@ if user_question:
 # to show max affection level
 #if st.session_state.cat_coming:
     #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
