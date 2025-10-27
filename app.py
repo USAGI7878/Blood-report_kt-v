@@ -116,7 +116,7 @@ if raw_text:
         patterns = [item] + reverse_alias.get(item, [])
         value_found = False
         for pattern in patterns:
-            match = re.search(rf"{pattern}\s+([\d.]+)\s*(U/L|mmol/L|µmol/L|g/L|%)"
+            match = re.search(rf"{pattern}\D*([\d.]+)", raw_text, re.IGNORECASE)
             if match:
                 try:
                     value = float(match.group(1))
@@ -133,7 +133,6 @@ if raw_text:
     df = pd.DataFrame(results, columns=["Test", "Value", "Reference Range"])
     st.subheader("🧪 Lab Result Analysis")
     st.dataframe(df)
-
 # --- Serology Data Extraction ---
 def interpret_result(text):
     """Interpret positive/negative keywords in text."""
