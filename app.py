@@ -116,7 +116,7 @@ if raw_text:
         patterns = [item] + reverse_alias.get(item, [])
         value_found = False
         for pattern in patterns:
-            match = re.search(rf"{pattern}.*?([\d.]+)", raw_text, re.IGNORECASE)
+            match = re.search(rf"{pattern}\s+([\d.]+)\s*(U/L|mmol/L|µmol/L|g/L|%)", raw_text, re.IGNORECASE)
             if match:
                 try:
                     value = float(match.group(1))
@@ -290,6 +290,7 @@ if user_question:
 # to show max affection level
 #if st.session_state.cat_coming:
     #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
