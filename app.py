@@ -224,70 +224,71 @@ if user_question:
         st.write(response)
 
 #mini game 
-import random
+#import random
 
-st.title("🐾 Cat Interaction Game ")
-st.title("🐾 Relax time ! ")
+#st.title("🐾 Cat Interaction Game ")
+#st.title("🐾 Relax time ! ")
 
 
 # original mood 
-if "affection" not in st.session_state:
-    st.session_state.affection = 0
-    st.session_state.cat_mood = "neutral"
-    st.session_state.cat_coming = False  # 
-    st.session_state.cat_coming = False  #
+#if "affection" not in st.session_state:
+   # st.session_state.affection = 0
+    #st.session_state.cat_mood = "neutral"
+    #st.session_state.cat_coming = False  # 
+    #st.session_state.cat_coming = False  #
 
 # cat resposes 
-cat_responses = {
-    "head": ["😺 Purr... loves head pats!", "😸 Happy kitty~"],
-    "chin": ["😽 Leans in for more...", "😻 Favorite spot!"],
-    "tail": ["🙀 Hisses! Don't touch the tail!", "😾 Annoyed..."],
-    "butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
-}
+#cat_responses = {
+    #"head": ["😺 Purr... loves head pats!", "😸 Happy kitty~"],
+    #"chin": ["😽 Leans in for more...", "😻 Favorite spot!"],
+    #"tail": ["🙀 Hisses! Don't touch the tail!", "😾 Annoyed..."],
+    #"butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
+#}
 
-part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
+#part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
 
 # press button to start the game 
-if st.button("Pet the cat 🐱"):
-    response = random.choice(cat_responses[part])
-    st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
+#if st.button("Pet the cat 🐱"):
+    #response = random.choice(cat_responses[part])
+    #st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
 
     # changes 
-    if part in ["head", "chin"]:
-        st.session_state.affection += 1
-        st.session_state.cat_mood = "happy"
-    elif part == "butt":
-        st.session_state.affection += random.choice([0, 1])
-        st.session_state.cat_mood = "confused"
-    else:
-        st.session_state.affection -= 1
-        st.session_state.cat_mood = "grumpy"
+    #if part in ["head", "chin"]:
+        #st.session_state.affection += 1
+        #st.session_state.cat_mood = "happy"
+    #elif part == "butt":
+        #st.session_state.affection += random.choice([0, 1])
+        #st.session_state.cat_mood = "confused"
+    #else:
+        #st.session_state.affection -= 1
+        #st.session_state.cat_mood = "grumpy"
 
     # hit the target
-    if st.session_state.affection >= 10 and not st.session_state.cat_coming:
-        st.session_state.cat_coming = True
-        st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
+    #if st.session_state.affection >= 10 and not st.session_state.cat_coming:
+        #st.session_state.cat_coming = True
+        #st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
 
 
 #show affection level
-st.metric("🐾 Affection Level", st.session_state.affection)
+#st.metric("🐾 Affection Level", st.session_state.affection)
 
 
 # cat emotion with pictures 
-cat_images = {
-    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
-    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
-    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
-    "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
-    "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  
-    "grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
-    "confused": "https://i.imgflip.com/64ngqc.png"  
-}
+#cat_images = {
+    #"happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
+    #"neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
+    #"grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
+    #"happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
+    #"neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  
+    #"grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
+    #"confused": "https://i.imgflip.com/64ngqc.png"  
+#}
 
-st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
+#st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
 
 
 # to show max affection level
-if st.session_state.cat_coming:
-    st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+#if st.session_state.cat_coming:
+    #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
