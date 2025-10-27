@@ -3,8 +3,6 @@ import fitz
 import pandas as pd
 import re
 import math
-import easyocr
-
 st.markdown("""
     <style>
         .stApp {
@@ -102,34 +100,11 @@ for key, alist in aliases.items():
 # upload file 
 
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
-
 if uploaded_file is not None:
-    st.write("✅ File uploaded:", uploaded_file.name)
-    st.write("📦 File size (bytes):", uploaded_file.size)
-
-    # 先读取 PDF 成 bytes
-    file_bytes = uploaded_file.read()
-
-    raw_text = ""
-    reader = easyocr.Reader(['en'])
-
-    # 用 PyMuPDF 打开 PDF
-    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-        for i, page in enumerate(doc):
-            text = page.get_text("text")
-            if not text.strip():
-                # 如果这一页没有文字，就用 OCR 识别
-                pix = page.get_pixmap()
-                img_bytes = pix.tobytes("png")
-                ocr_result = reader.readtext(img_bytes, detail=0)
-                text = " ".join(ocr_result)
-                st.warning(f"OCR used on page {i+1}")
-            else:
-                st.info(f"Text extracted from page {i+1}")
-            raw_text += text.replace("\n", " ")
-
-        st.session_state["raw_text"] = raw_text  # ✅ 保存文字
-        st.success(f"{doc.page_count} pages loaded (with OCR if needed).")
+    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
+        for page in doc:
+            raw_text += page.get_text().replace("\n", " ")
+        st.success(f"{doc.page_count} pages loaded.")
 
     with st.expander("📜 Raw Text from PDF"):
         st.text(raw_text)
@@ -222,35 +197,29 @@ try:
 except Exception as e:
     st.warning(f"Waiting for input on Urea and Post: {e}")
 # --- Bot Section ---
-
 import streamlit as st
-
 st.subheader("🤖 Ask the BOT Assistant")
 
 user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
-
 if user_question:
-    # 显示使用者输入的内容
     with st.chat_message("user"):
         st.write(user_question)
 
-    # 生成回应
     response = ""
 
     if "kt/v" in user_question.lower():
-        response = "KT/V is a measure of dialysis adequacy. Target value should be > 1.2."
+        response = "KT/V is ... > 1.2"
     elif "urr" in user_question.lower():
-        response = "URR (Urea Reduction Ratio) indicates dialysis efficiency. It should be > 65%."
+        response = "URR ... > 65%"
     elif "how to use" in user_question.lower() or "upload" in user_question.lower():
-        response = "After uploading your PDF, the system extracts lab data and calculates KT/V and URR."
+        response = "After uploading the PDF ..."
     elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
-        response = "Haemoglobin normal range is 10–12 g/dL for dialysis patients."
+        response = "Haemoglobin ... 10-12 g/dL"
     elif "phosphate" in user_question.lower():
-        response = "High phosphate levels (>1.45 mmol/L) may need phosphate binders or diet control."
+        response = "High phosphate ... below 1.45 mmol/L"
     else:
-        response = "Currently, I can only answer questions related to KT/V, URR, or basic lab tests."
+        response = "Currently, I can only answer questions related to KT/V, URR..."
 
-    # 助手回答（注意：这里必须缩进 4 个空格，与上面对齐）
     with st.chat_message("assistant"):
         st.write(response)
 
@@ -304,7 +273,7 @@ if st.button("Pet the cat 🐱"):
 st.metric("🐾 Affection Level", st.session_state.affection)
 
 
-# cat emotion  pictures 
+# cat emotion with pictures 
 cat_images = {
     "happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
     "neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
@@ -321,17 +290,4 @@ st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's c
 # to show max affection level
 if st.session_state.cat_coming:
     st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
