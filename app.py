@@ -3,6 +3,8 @@ import fitz
 import pandas as pd
 import re
 import math
+
+# --- UI 样式 ---
 st.markdown("""
     <style>
         .stApp {
@@ -27,10 +29,6 @@ st.markdown("""
         .stRadio > div > label {
             color: white;
         }
-        .stChatMessage {
-            background-color: #333;
-            color: white;
-        }
         .stFileUploader > div {
             color: white;
         }
@@ -39,12 +37,10 @@ st.markdown("""
 
 st.title("🧪 Medical Lab Report Analyzer (PDF)")
 
-
 raw_text = ""
 results = []
 
-# identify key and value 
-
+# --- 检查项目 ---
 items_info = {
     "Creatinine": ("µmol/L", 44, 110),
     "Uric Acid":("µmol/L", 120, 420),
@@ -87,57 +83,40 @@ aliases = {
     "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
     "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)","A L T"],
     "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)","A S T"],
-
 }
-
-# create key
 
 reverse_alias = {}
 for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
 
-# upload file 
-
-import easyocr
-
+# --- 上传 PDF ---
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 
 if uploaded_file is not None:
     file_bytes = uploaded_file.read()
-    reader = easyocr.Reader(['en', 'ch_sim'], gpu=False)
     raw_text = ""
 
     with fitz.open(stream=file_bytes, filetype="pdf") as doc:
         for i, page in enumerate(doc):
             text = page.get_text("text").strip()
-            
-            if text:  # ✅ 有文字层
-                st.info(f"✅ Page {i+1}: Text extracted directly.")
+            if text:
+                st.info(f"✅ Page {i+1}: Text extracted.")
                 raw_text += text.replace("\n", " ")
-            else:  # 🖼️ 没文字 → 用OCR
-                st.warning(f"⚠️ Page {i+1}: No text detected. Using OCR...")
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                img_bytes = pix.tobytes("png")
-                ocr_result = reader.readtext(img_bytes, detail=0)
-                text = " ".join(ocr_result)
-                text = re.sub(r'\s+', ' ', text)
-                raw_text += text.replace("\n", " ")
-
-        st.success(f"✅ All {doc.page_count} pages processed (text + OCR combined).")
+            else:
+                st.warning(f"⚠️ Page {i+1}: No text detected (likely image-only PDF).")
+        st.success(f"{doc.page_count} pages processed.")
 
     with st.expander("📜 Raw Text from PDF"):
-        st.text_area("Extracted Text", raw_text[:3000])  # 预览前3000字
+        st.text_area("Extracted Text Preview", raw_text[:3000])
 
-
-# analyze PDF data
-
+# --- 分析数据 ---
 if raw_text:
     for item, (unit, low, high) in items_info.items():
         patterns = [item] + reverse_alias.get(item, [])
         value_found = False
         for pattern in patterns:
-            match = re.search(rf"{pattern}\s+([\d.]+)\s*(U/L|mmol/L|µmol/L|g/L|%)", raw_text, re.IGNORECASE)
+            match = re.search(rf"{pattern}\D*([\d.]+)", raw_text, re.IGNORECASE)
             if match:
                 try:
                     value = float(match.group(1))
@@ -155,45 +134,9 @@ if raw_text:
     st.subheader("🧪 Lab Result Analysis")
     st.dataframe(df)
 
+# --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
-# Serology data extraction
 
-def interpret_result(text):
-    if "not detected" in text.lower() or "negative" in text.lower() or "non reactive" in text.lower():
-        return "Negative"
-    elif "detected" in text.lower() or "positive" in text.lower() or "reactive" in text.lower():
-        return "Positive"
-    else:
-        return "Not done"
-
-def extract_serology(text):
-    results = {}
-
-    hiv = re.search(r"HIV.*?(Not Detected|Detected|Negative|Positive|Reactive|Non Reactive)", text, re.IGNORECASE)
-    results["Anti HIV antibody"] = interpret_result(hiv.group(1)) if hiv else "Not done"
-
-    hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
-    results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
-
-    hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
-    results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
-
-    hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
-    results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
-
-    results["Hep B Core antibody (HBcAb)"] = "Not done"  
-    results["Hep B Core antibody (HBcAb)"] = "Not done"  
-    return results
-
-#show result 
-if raw_text:
-    sero = extract_serology(raw_text)
-    st.subheader("🧬 Serology Results")
-    st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
-
-
-
-# user input data 
 dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
 uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
 post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
@@ -204,11 +147,8 @@ try:
 
     R = post_urea / urea
     URR = round((1 - R) * 100, 2)
-    try:
-        kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
-        kt_v = round(kt_v, 2)
-    except:
-        kt_v = "⚠️ Calculation error"
+    kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
+    kt_v = round(kt_v, 2)
 
     st.subheader("⏳ KT/V & URR Results")
     st.table(pd.DataFrame({
@@ -216,105 +156,4 @@ try:
         "Value": [URR, kt_v]
     }))
 except Exception as e:
-    st.warning(f"Waiting for input on Urea and Post: {e}")
-# --- Bot Section ---
-import streamlit as st
-st.subheader("🤖 Ask the BOT Assistant")
-
-user_question = st.chat_input("Ask me about KT/V, lab test meanings, or how to use this tool...")
-if user_question:
-    with st.chat_message("user"):
-        st.write(user_question)
-
-    response = ""
-
-    if "kt/v" in user_question.lower():
-        response = "KT/V is ... > 1.2"
-    elif "urr" in user_question.lower():
-        response = "URR ... > 65%"
-    elif "how to use" in user_question.lower() or "upload" in user_question.lower():
-        response = "After uploading the PDF ..."
-    elif "hb" in user_question.lower() or "haemoglobin" in user_question.lower():
-        response = "Haemoglobin ... 10-12 g/dL"
-    elif "phosphate" in user_question.lower():
-        response = "High phosphate ... below 1.45 mmol/L"
-    else:
-        response = "Currently, I can only answer questions related to KT/V, URR..."
-
-    with st.chat_message("assistant"):
-        st.write(response)
-
-#mini game 
-#import random
-
-#st.title("🐾 Cat Interaction Game ")
-#st.title("🐾 Relax time ! ")
-
-
-# original mood 
-#if "affection" not in st.session_state:
-   # st.session_state.affection = 0
-    #st.session_state.cat_mood = "neutral"
-    #st.session_state.cat_coming = False  # 
-    #st.session_state.cat_coming = False  #
-
-# cat resposes 
-#cat_responses = {
-    #"head": ["😺 Purr... loves head pats!", "😸 Happy kitty~"],
-    #"chin": ["😽 Leans in for more...", "😻 Favorite spot!"],
-    #"tail": ["🙀 Hisses! Don't touch the tail!", "😾 Annoyed..."],
-    #"butt": ["😼 Wiggles... suspicious but ok", "😹 Embarrassed but accepts it"],
-#}
-
-#part = st.radio("Where do you want to pet the cat?", ["head", "chin", "tail", "butt"], horizontal=True)
-
-# press button to start the game 
-#if st.button("Pet the cat 🐱"):
-    #response = random.choice(cat_responses[part])
-    #st.write(f"🧤 You pet the cat's {part}.\n\n{response}")
-
-    # changes 
-    #if part in ["head", "chin"]:
-        #st.session_state.affection += 1
-        #st.session_state.cat_mood = "happy"
-    #elif part == "butt":
-        #st.session_state.affection += random.choice([0, 1])
-        #st.session_state.cat_mood = "confused"
-    #else:
-        #st.session_state.affection -= 1
-        #st.session_state.cat_mood = "grumpy"
-
-    # hit the target
-    #if st.session_state.affection >= 10 and not st.session_state.cat_coming:
-        #st.session_state.cat_coming = True
-        #st.write("🎉 The cat is coming to you! You’ve earned its trust! 🐱💖")
-
-
-#show affection level
-#st.metric("🐾 Affection Level", st.session_state.affection)
-
-
-# cat emotion with pictures 
-#cat_images = {
-    #"happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
-    #"neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250", 
-    #"grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
-    #"happy": "https://i.imgflip.com/t1qbu.jpg?a484752",  
-    #"neutral": "https://www.meowbox.com/cdn/shop/articles/Screen_Shot_2024-03-15_at_10.53.41_AM.png?v=1710525250",  
-    #"grumpy": "https://s.rfi.fr/media/display/48adfe80-10b6-11ea-b699-005056a99247/w:1280/p:1x1/grumpy_cat.jpg",  
-    #"confused": "https://i.imgflip.com/64ngqc.png"  
-#}
-
-#st.image(cat_images[st.session_state.cat_mood], width=300, caption="Your cat's current mood 🐾")
-
-
-# to show max affection level
-#if st.session_state.cat_coming:
-    #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
-
-
-
-
-
-
-
+    st.warning(f"Waiting for Urea & Post Urea values: {e}")
