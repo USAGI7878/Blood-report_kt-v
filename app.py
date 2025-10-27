@@ -85,8 +85,8 @@ aliases = {
     "Urea": ["Blood Urea", "Urea (BUN)"],
     "Urea - Post Dialysis": ["Postdialysis Urea", "Post BUN"],
     "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
-    "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)","ALT"],
-    "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)","AST"],
+    "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)","A L T"],
+    "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)","A S T"],
 
 }
 
@@ -290,6 +290,7 @@ if user_question:
 # to show max affection level
 #if st.session_state.cat_coming:
     #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
