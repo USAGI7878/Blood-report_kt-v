@@ -99,15 +99,35 @@ for key, alist in aliases.items():
 
 # upload file 
 
+import easyocr
+
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
+
 if uploaded_file is not None:
-    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
-        for page in doc:
-            raw_text += page.get_text().replace("\n", " ")
-        st.success(f"{doc.page_count} pages loaded.")
+    file_bytes = uploaded_file.read()
+    reader = easyocr.Reader(['en'])
+    raw_text = ""
+
+    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        for i, page in enumerate(doc):
+            text = page.get_text("text").strip()
+            
+            if text:  # ✅ 有文字层
+                st.info(f"✅ Page {i+1}: Text extracted directly.")
+                raw_text += text.replace("\n", " ")
+            else:  # 🖼️ 没文字 → 用OCR
+                st.warning(f"⚠️ Page {i+1}: No text detected. Using OCR...")
+                pix = page.get_pixmap()
+                img_bytes = pix.tobytes("png")
+                ocr_result = reader.readtext(img_bytes, detail=0)
+                text = " ".join(ocr_result)
+                raw_text += text.replace("\n", " ")
+
+        st.success(f"✅ All {doc.page_count} pages processed (text + OCR combined).")
 
     with st.expander("📜 Raw Text from PDF"):
-        st.text(raw_text)
+        st.text_area("Extracted Text", raw_text[:3000])  # 预览前3000字
+
 
 # analyze PDF data
 
@@ -290,6 +310,7 @@ if user_question:
 # to show max affection level
 #if st.session_state.cat_coming:
     #st.image("https://i.pinimg.com/474x/41/c8/85/41c885962c25860bf8bf0ae6ebf8255c.jpg", width=300, caption="Your cat is coming to you! 🐾💖")
+
 
 
 
