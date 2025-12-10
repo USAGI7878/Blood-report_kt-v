@@ -3,6 +3,8 @@ import fitz
 import pandas as pd
 import re
 import math
+import json
+from anthropic import Anthropic
 
 # --- UI 样式 ---
 st.markdown("""
@@ -32,10 +34,35 @@ st.markdown("""
         .stFileUploader > div {
             color: white;
         }
+        .ai-suggestion {
+            background-color: rgba(40, 90, 140, 0.6);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+            margin: 1rem 0;
+        }
+        .warning-box {
+            background-color: rgba(140, 40, 40, 0.6);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b6b;
+            margin: 0.5rem 0;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🧪 Medical Lab Report Analyzer (PDF)")
+st.title("🧪 AI-Powered Blood Report Analyzer")
+
+# --- API Key Input ---
+with st.sidebar:
+    st.header("🔑 AI Configuration")
+    api_key = st.text_input("Anthropic API Key", type="password", help="Enter your Anthropic API key to enable AI analysis")
+    st.info("💡 Get your API key from: https://console.anthropic.com/")
+    
+    st.header("⚙️ Patient Context (Optional)")
+    patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=0, help="Helps AI provide age-appropriate recommendations")
+    patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
+    current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
 
 raw_text = ""
 results = []
@@ -133,6 +160,7 @@ if raw_text:
     df = pd.DataFrame(results, columns=["Test", "Value", "Reference Range"])
     st.subheader("🧪 Lab Result Analysis")
     st.dataframe(df)
+
 # --- Serology Data Extraction ---
 def interpret_result(text):
     """Interpret positive/negative keywords in text."""
@@ -155,7 +183,7 @@ def extract_serology(text):
     hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
     results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
 
-    # Hepatitis B surface antibody (HBsAb) — 可数值阳性
+    # Hepatitis B surface antibody (HBsAb)
     hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
     results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
 
@@ -163,17 +191,16 @@ def extract_serology(text):
     hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
     results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
 
-    # 可补充项目（如果未来报告新增）
     results["Hep B Core antibody (HBcAb)"] = "Not done"
 
     return results
 
 # --- 显示 Serology 结果 ---
+sero_results = None
 if raw_text:
-    sero = extract_serology(raw_text)
+    sero_results = extract_serology(raw_text)
     st.subheader("🧬 Serology Results")
-    st.table(pd.DataFrame(list(sero.items()), columns=["Test", "Result"]))
-
+    st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
 
 # --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
@@ -181,6 +208,9 @@ results_dict = {row[0]: row[1] for row in results}
 dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
 uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
 post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
+
+kt_v = None
+URR = None
 
 try:
     urea = float(results_dict["Urea"].replace("*", ""))
@@ -197,12 +227,87 @@ try:
         "Value": [URR, kt_v]
     }))
 except Exception as e:
-    st.warning(f"Waiting for Urea & Post Urea values: {e}")
+    st.warning(f"⚠️ Cannot calculate KT/V & URR: {e}")
 
+# --- AI Analysis Section ---
+if raw_text and results and api_key:
+    st.markdown("---")
+    st.subheader("🤖 AI-Powered Clinical Insights")
+    
+    if st.button("🔍 Generate AI Analysis & Recommendations", type="primary"):
+        with st.spinner("🧠 AI is analyzing the blood test results..."):
+            try:
+                # Initialize Anthropic client
+                client = Anthropic(api_key=api_key)
+                
+                # Prepare data for AI
+                lab_results_text = df.to_string()
+                serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
+                
+                kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
+                
+                # Build context
+                context = f"""
+Patient Context:
+- Age: {patient_age if patient_age > 0 else 'Not provided'}
+- Known Conditions: {patient_conditions if patient_conditions else 'None specified'}
+- Current Medications: {current_medications if current_medications else 'None specified'}
 
+Lab Results:
+{lab_results_text}
 
+Serology Results:
+{serology_text}
 
+Dialysis Adequacy:
+{kt_v_text}
+- Dialysis Time: {dialysis_time} hours
+- Ultrafiltration: {uf_volume} L
+- Post-dialysis Weight: {post_weight} kg
+"""
 
+                prompt = f"""You are an experienced nephrology and dialysis nurse assistant. Analyze the following blood test results and provide clinical insights.
 
+{context}
 
+Please provide:
 
+1. **Critical Findings**: Identify any values that are significantly abnormal and require immediate attention (marked with *)
+
+2. **Key Observations**: Summarize the overall picture - what do these results tell us about the patient's condition?
+
+3. **Dialysis Adequacy Assessment**: Evaluate the KT/V and URR values (KT/V target: ≥1.2, URR target: ≥65%)
+
+4. **Clinical Recommendations**: 
+   - Monitoring suggestions
+   - Potential medication adjustments to consider
+   - Dietary recommendations
+   - Follow-up testing if needed
+
+5. **Nursing Considerations**: Practical points for dialysis unit nurses managing this patient
+
+Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
+
+                # Call Claude API
+                message = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=2000,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                
+                ai_response = message.content[0].text
+                
+                # Display AI insights
+                st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
+                
+                # Add disclaimer
+                st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
+                
+            except Exception as e:
+                st.error(f"❌ Error generating AI analysis: {str(e)}")
+                st.info("Please check your API key and ensure you have an active Anthropic account.")
+
+elif raw_text and results and not api_key:
+    st.info("🔑 Enter your Anthropic API key in the sidebar to enable AI-powered analysis and recommendations.")
