@@ -3,8 +3,57 @@ import fitz
 import pandas as pd
 import re
 import math
-import json
-from anthropic import Anthropic
+import google.generativeai as genai
+from datetime import datetime, timedelta
+from collections import deque
+
+# --- Rate Limiter Class ---
+class RateLimiter:
+    def __init__(self, max_requests=15, time_window=60):
+        """
+        max_requests: Maximum number of requests allowed
+        time_window: Time window in seconds (default 60s = 1 minute)
+        """
+        if 'request_times' not in st.session_state:
+            st.session_state.request_times = deque()
+        self.max_requests = max_requests
+        self.time_window = time_window
+    
+    def can_make_request(self):
+        """Check if a new request can be made"""
+        now = datetime.now()
+        # Remove requests older than time window
+        while st.session_state.request_times and \
+              (now - st.session_state.request_times[0]).total_seconds() > self.time_window:
+            st.session_state.request_times.popleft()
+        
+        return len(st.session_state.request_times) < self.max_requests
+    
+    def add_request(self):
+        """Record a new request"""
+        st.session_state.request_times.append(datetime.now())
+    
+    def get_wait_time(self):
+        """Get seconds until next request is allowed"""
+        if len(st.session_state.request_times) < self.max_requests:
+            return 0
+        
+        oldest_request = st.session_state.request_times[0]
+        elapsed = (datetime.now() - oldest_request).total_seconds()
+        return max(0, self.time_window - elapsed)
+    
+    def get_remaining_requests(self):
+        """Get number of remaining requests in current window"""
+        now = datetime.now()
+        # Clean old requests
+        while st.session_state.request_times and \
+              (now - st.session_state.request_times[0]).total_seconds() > self.time_window:
+            st.session_state.request_times.popleft()
+        
+        return self.max_requests - len(st.session_state.request_times)
+
+# Initialize rate limiter (15 requests per minute)
+rate_limiter = RateLimiter(max_requests=15, time_window=60)
 
 # --- UI 样式 ---
 st.markdown("""
@@ -48,18 +97,28 @@ st.markdown("""
             border-left: 4px solid #ff6b6b;
             margin: 0.5rem 0;
         }
+        .rate-limit-info {
+            background-color: rgba(70, 70, 70, 0.6);
+            padding: 0.8rem;
+            border-radius: 8px;
+            border-left: 4px solid #FFA500;
+            margin: 0.5rem 0;
+            font-size: 0.9em;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🧪 AI-Powered Blood Report Analyzer")
+st.caption("🆓 Powered by Google Gemini (Free AI)")
 
 # --- Load API Key from Secrets (Secure Method) ---
 try:
-    api_key = st.secrets["ANTHROPIC_API_KEY"]
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
     ai_enabled = True
 except:
     ai_enabled = False
-    st.warning("⚠️ AI features disabled. Please configure ANTHROPIC_API_KEY in Streamlit secrets.")
+    st.warning("⚠️ AI features disabled. Please configure GOOGLE_API_KEY in Streamlit secrets.")
 
 # --- Sidebar for Patient Context ---
 with st.sidebar:
@@ -68,10 +127,17 @@ with st.sidebar:
     patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
     current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
     
+    # Rate limit display
+    st.markdown("---")
+    st.header("📊 API Usage")
+    remaining = rate_limiter.get_remaining_requests()
+    st.metric("Requests Remaining", f"{remaining}/15")
+    st.caption("Resets every minute")
+    
     if ai_enabled:
         st.success("✅ AI Analysis Enabled")
     else:
-        st.info("💡 AI analysis requires API key configuration")
+        st.info("💡 Get free API key from: https://aistudio.google.com/app/apikey")
 
 raw_text = ""
 results = []
@@ -243,20 +309,32 @@ if raw_text and results and ai_enabled:
     st.markdown("---")
     st.subheader("🤖 AI-Powered Clinical Insights")
     
-    if st.button("🔍 Generate AI Analysis & Recommendations", type="primary"):
-        with st.spinner("🧠 AI is analyzing the blood test results..."):
-            try:
-                # Initialize Anthropic client
-                client = Anthropic(api_key=api_key)
-                
-                # Prepare data for AI
-                lab_results_text = df.to_string()
-                serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
-                
-                kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
-                
-                # Build context
-                context = f"""
+    # Show rate limit status
+    remaining = rate_limiter.get_remaining_requests()
+    if remaining > 0:
+        st.markdown(f'<div class="rate-limit-info">📊 AI requests remaining: <strong>{remaining}/15</strong> (resets every minute)</div>', unsafe_allow_html=True)
+    else:
+        wait_time = int(rate_limiter.get_wait_time())
+        st.markdown(f'<div class="warning-box">⏱️ Rate limit reached. Please wait <strong>{wait_time}</strong> seconds before next request.</div>', unsafe_allow_html=True)
+    
+    # Disable button if rate limit exceeded
+    button_disabled = not rate_limiter.can_make_request()
+    
+    if st.button("🔍 Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
+        if rate_limiter.can_make_request():
+            with st.spinner("🧠 AI is analyzing the blood test results..."):
+                try:
+                    # Record this request
+                    rate_limiter.add_request()
+                    
+                    # Prepare data for AI
+                    lab_results_text = df.to_string()
+                    serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
+                    
+                    kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
+                    
+                    # Build context
+                    context = f"""
 Patient Context:
 - Age: {patient_age if patient_age > 0 else 'Not provided'}
 - Known Conditions: {patient_conditions if patient_conditions else 'None specified'}
@@ -275,7 +353,7 @@ Dialysis Adequacy:
 - Post-dialysis Weight: {post_weight} kg
 """
 
-                prompt = f"""You are an experienced nephrology and dialysis nurse assistant. Analyze the following blood test results and provide clinical insights.
+                    prompt = f"""You are an experienced nephrology and dialysis nurse assistant. Analyze the following blood test results and provide clinical insights.
 
 {context}
 
@@ -297,26 +375,28 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                # Call Claude API
-                message = client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=2000,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                
-                ai_response = message.content[0].text
-                
-                # Display AI insights
-                st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
-                
-                # Add disclaimer
-                st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
-                
-            except Exception as e:
-                st.error(f"❌ Error generating AI analysis: {str(e)}")
-                st.info("Please check the API configuration.")
+                    # Call Gemini API
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt)
+                    
+                    ai_response = response.text
+                    
+                    # Display AI insights
+                    st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
+                    
+                    # Update remaining requests display
+                    new_remaining = rate_limiter.get_remaining_requests()
+                    st.info(f"✅ Analysis complete. {new_remaining} requests remaining this minute.")
+                    
+                    # Add disclaimer
+                    st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
+                    
+                except Exception as e:
+                    st.error(f"❌ Error generating AI analysis: {str(e)}")
+                    st.info("Please check the API configuration or try again later.")
+        else:
+            wait_time = int(rate_limiter.get_wait_time())
+            st.error(f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
 
 elif raw_text and results and not ai_enabled:
-    st.info("💡 AI analysis is not configured. Please add ANTHROPIC_API_KEY to Streamlit secrets to enable this feature.")
+    st.info("💡 AI analysis is not configured. Get your free API key from: https://aistudio.google.com/app/apikey")
