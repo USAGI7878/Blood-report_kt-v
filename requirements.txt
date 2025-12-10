@@ -3,4 +3,4 @@ PyMuPDF>=1.26.5
 pandas>=2.3.3
 openpyxl>=3.1.5
 easyocr[torch]
-anthropic>=0.39.0
+google-generativeai>=0.3.0
