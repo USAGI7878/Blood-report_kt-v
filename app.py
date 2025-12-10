@@ -449,8 +449,8 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                    # Call Gemini API
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # Call Gemini API (using correct model name)
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt)
                     
                     ai_response = response.text
