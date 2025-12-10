@@ -120,10 +120,66 @@ except:
     ai_enabled = False
     st.warning("⚠️ AI features disabled. Please configure GOOGLE_API_KEY in Streamlit secrets.")
 
+# --- Extract Patient Info from PDF ---
+def extract_patient_info(text):
+    """Extract patient information from PDF text"""
+    info = {
+        "age": 0,
+        "name": "",
+        "id": ""
+    }
+    
+    # Extract Age - common patterns
+    age_patterns = [
+        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
+        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
+        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
+        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
+    ]
+    
+    for pattern in age_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            age = int(match.group(1))
+            if 0 < age < 120:  # Sanity check
+                info["age"] = age
+                break
+    
+    # Extract Patient Name - common patterns
+    name_patterns = [
+        r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+        r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+    ]
+    
+    for pattern in name_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["name"] = match.group(1).strip()
+            break
+    
+    # Extract Patient ID/MRN
+    id_patterns = [
+        r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
+        r"ID[:\s]+([A-Z0-9-]+)",
+    ]
+    
+    for pattern in id_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["id"] = match.group(1).strip()
+            break
+    
+    return info
+
 # --- Sidebar for Patient Context ---
 with st.sidebar:
     st.header("⚙️ Patient Context (Optional)")
-    patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=0, help="Helps AI provide age-appropriate recommendations")
+    
+    # Initialize patient info in session state
+    if 'patient_info' not in st.session_state:
+        st.session_state.patient_info = {"age": 0, "name": "", "id": ""}
+    
+    patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=st.session_state.patient_info["age"], help="Auto-extracted from PDF or enter manually")
     patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
     current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
     
@@ -208,6 +264,24 @@ if uploaded_file is not None:
             else:
                 st.warning(f"⚠️ Page {i+1}: No text detected (likely image-only PDF).")
         st.success(f"{doc.page_count} pages processed.")
+    
+    # Extract patient information from PDF
+    patient_info = extract_patient_info(raw_text)
+    st.session_state.patient_info = patient_info
+    
+    # Display extracted patient info
+    if patient_info["age"] > 0 or patient_info["name"] or patient_info["id"]:
+        with st.expander("👤 Auto-Extracted Patient Information", expanded=True):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if patient_info["name"]:
+                    st.metric("Patient Name", patient_info["name"])
+            with col2:
+                if patient_info["age"] > 0:
+                    st.metric("Age", f"{patient_info['age']} years")
+            with col3:
+                if patient_info["id"]:
+                    st.metric("Patient ID", patient_info["id"])
 
     with st.expander("📜 Raw Text from PDF"):
         st.text_area("Extracted Text Preview", raw_text[:3000])
