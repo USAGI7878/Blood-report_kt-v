@@ -53,16 +53,25 @@ st.markdown("""
 
 st.title("🧪 AI-Powered Blood Report Analyzer")
 
-# --- API Key Input ---
+# --- Load API Key from Secrets (Secure Method) ---
+try:
+    api_key = st.secrets["ANTHROPIC_API_KEY"]
+    ai_enabled = True
+except:
+    ai_enabled = False
+    st.warning("⚠️ AI features disabled. Please configure ANTHROPIC_API_KEY in Streamlit secrets.")
+
+# --- Sidebar for Patient Context ---
 with st.sidebar:
-    st.header("🔑 AI Configuration")
-    api_key = st.text_input("Anthropic API Key", type="password", help="Enter your Anthropic API key to enable AI analysis")
-    st.info("💡 Get your API key from: https://console.anthropic.com/")
-    
     st.header("⚙️ Patient Context (Optional)")
     patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=0, help="Helps AI provide age-appropriate recommendations")
     patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
     current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
+    
+    if ai_enabled:
+        st.success("✅ AI Analysis Enabled")
+    else:
+        st.info("💡 AI analysis requires API key configuration")
 
 raw_text = ""
 results = []
@@ -230,7 +239,7 @@ except Exception as e:
     st.warning(f"⚠️ Cannot calculate KT/V & URR: {e}")
 
 # --- AI Analysis Section ---
-if raw_text and results and api_key:
+if raw_text and results and ai_enabled:
     st.markdown("---")
     st.subheader("🤖 AI-Powered Clinical Insights")
     
@@ -307,7 +316,7 @@ Please be specific, practical, and prioritize patient safety. Use clear language
                 
             except Exception as e:
                 st.error(f"❌ Error generating AI analysis: {str(e)}")
-                st.info("Please check your API key and ensure you have an active Anthropic account.")
+                st.info("Please check the API configuration.")
 
-elif raw_text and results and not api_key:
-    st.info("🔑 Enter your Anthropic API key in the sidebar to enable AI-powered analysis and recommendations.")
+elif raw_text and results and not ai_enabled:
+    st.info("💡 AI analysis is not configured. Please add ANTHROPIC_API_KEY to Streamlit secrets to enable this feature.")
