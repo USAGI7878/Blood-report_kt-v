@@ -273,15 +273,17 @@ uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 if uploaded_file is not None:
     file_bytes = uploaded_file.read()
     raw_text = ""
+    page_count = 0
 
     with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        page_count = doc.page_count
         for i, page in enumerate(doc):
             text = page.get_text("text").strip()
             if text:
                 raw_text += text.replace("\n", " ")
         
-        # Simple success message
-        st.success(f"✅ PDF processed successfully ({doc.page_count} page{'s' if doc.page_count > 1 else ''})")
+    # Simple success message (outside the 'with' block)
+    st.success(f"✅ PDF processed successfully ({page_count} page{'s' if page_count > 1 else ''})")
     
     # Extract patient information from PDF
     patient_info = extract_patient_info(raw_text)
@@ -304,7 +306,7 @@ if uploaded_file is not None:
     # Debug section - collapsed by default
     with st.expander("🐛 Debug Information", expanded=False):
         st.caption("📄 Page Extraction Details")
-        for i in range(doc.page_count):
+        for i in range(page_count):
             st.text(f"✓ Page {i+1} extracted")
         
         st.caption("📜 Raw Text Preview")
