@@ -278,11 +278,10 @@ if uploaded_file is not None:
         for i, page in enumerate(doc):
             text = page.get_text("text").strip()
             if text:
-                st.info(f"✅ Page {i+1}: Text extracted.")
                 raw_text += text.replace("\n", " ")
-            else:
-                st.warning(f"⚠️ Page {i+1}: No text detected (likely image-only PDF).")
-        st.success(f"{doc.page_count} pages processed.")
+        
+        # Simple success message
+        st.success(f"✅ PDF processed successfully ({doc.page_count} page{'s' if doc.page_count > 1 else ''})")
     
     # Extract patient information from PDF
     patient_info = extract_patient_info(raw_text)
@@ -302,8 +301,14 @@ if uploaded_file is not None:
                 if patient_info["id"]:
                     st.metric("Patient ID", patient_info["id"])
 
-    with st.expander("📜 Raw Text from PDF"):
-        st.text_area("Extracted Text Preview", raw_text[:3000])
+    # Debug section - collapsed by default
+    with st.expander("🐛 Debug Information", expanded=False):
+        st.caption("📄 Page Extraction Details")
+        for i in range(doc.page_count):
+            st.text(f"✓ Page {i+1} extracted")
+        
+        st.caption("📜 Raw Text Preview")
+        st.text_area("Extracted Text", raw_text[:3000], height=200)
 
 # --- 分析数据 ---
 if raw_text:
