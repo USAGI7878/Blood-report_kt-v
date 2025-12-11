@@ -449,11 +449,29 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                    # Call Gemini API (using correct model name)
-                    model = genai.GenerativeModel('gemini-pro')
-                    response = model.generate_content(prompt)
+                    # Call Gemini API - Try multiple model names in order
+                    model_names = [
+                        'gemini-1.5-flash-latest',  # Newest free model
+                        'gemini-1.5-flash',         # Alternative name
+                        'gemini-pro',               # Legacy name
+                        'models/gemini-1.5-flash',  # Full path version
+                    ]
                     
-                    ai_response = response.text
+                    ai_response = None
+                    last_error = None
+                    
+                    for model_name in model_names:
+                        try:
+                            model = genai.GenerativeModel(model_name)
+                            response = model.generate_content(prompt)
+                            ai_response = response.text
+                            break  # Success! Exit loop
+                        except Exception as model_error:
+                            last_error = str(model_error)
+                            continue  # Try next model
+                    
+                    if ai_response is None:
+                        raise Exception(f"All models failed. Last error: {last_error}")
                     
                     # Display AI insights
                     st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
