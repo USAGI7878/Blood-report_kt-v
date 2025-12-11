@@ -116,9 +116,28 @@ try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
     ai_enabled = True
-except:
+    
+    # DEBUG: List available models
+    with st.expander("🔍 DEBUG: Available AI Models", expanded=False):
+        try:
+            available_models = []
+            for model in genai.list_models():
+                if 'generateContent' in model.supported_generation_methods:
+                    available_models.append(model.name)
+            
+            if available_models:
+                st.success(f"✅ Found {len(available_models)} compatible models:")
+                for model_name in available_models:
+                    st.code(model_name)
+            else:
+                st.error("❌ No compatible models found!")
+                st.info("This means your API key might not have access to Gemini models.")
+        except Exception as e:
+            st.error(f"❌ Error listing models: {e}")
+            
+except Exception as e:
     ai_enabled = False
-    st.warning("⚠️ AI features disabled. Please configure GOOGLE_API_KEY in Streamlit secrets.")
+    st.warning(f"⚠️ AI features disabled. Error: {e}")
 
 # --- Extract Patient Info from PDF ---
 def extract_patient_info(text):
@@ -449,29 +468,43 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                    # Call Gemini API - Try multiple model names in order
-                    model_names = [
-                        'gemini-1.5-flash-latest',  # Newest free model
-                        'gemini-1.5-flash',         # Alternative name
-                        'gemini-pro',               # Legacy name
-                        'models/gemini-1.5-flash',  # Full path version
-                    ]
-                    
-                    ai_response = None
-                    last_error = None
-                    
-                    for model_name in model_names:
-                        try:
-                            model = genai.GenerativeModel(model_name)
-                            response = model.generate_content(prompt)
-                            ai_response = response.text
-                            break  # Success! Exit loop
-                        except Exception as model_error:
-                            last_error = str(model_error)
-                            continue  # Try next model
-                    
-                    if ai_response is None:
-                        raise Exception(f"All models failed. Last error: {last_error}")
+                    # Call Gemini API with proper error handling
+                    try:
+                        # First, try to list available models to find the right one
+                        model_to_use = None
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                model_to_use = m.name
+                                break
+                        
+                        if model_to_use is None:
+                            raise Exception("No compatible Gemini models found. Please check your API key is from aistudio.google.com")
+                        
+                        # Use the found model
+                        model = genai.GenerativeModel(model_to_use)
+                        response = model.generate_content(prompt)
+                        ai_response = response.text
+                        
+                    except Exception as model_error:
+                        # Fallback: try common model names
+                        model_names_to_try = [
+                            'gemini-1.5-flash',
+                            'gemini-1.5-pro', 
+                            'gemini-pro',
+                        ]
+                        
+                        ai_response = None
+                        for model_name in model_names_to_try:
+                            try:
+                                model = genai.GenerativeModel(model_name)
+                                response = model.generate_content(prompt)
+                                ai_response = response.text
+                                break
+                            except:
+                                continue
+                        
+                        if ai_response is None:
+                            raise Exception(f"Could not find working model. Original error: {model_error}")
                     
                     # Display AI insights
                     st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
