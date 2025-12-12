@@ -409,6 +409,12 @@ if raw_text and results and ai_enabled:
     st.markdown("---")
     st.subheader("🤖 AI-Powered Clinical Insights")
     
+    # Initialize chat history in session state
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    if 'initial_analysis_done' not in st.session_state:
+        st.session_state.initial_analysis_done = False
+    
     # Show rate limit status
     remaining = rate_limiter.get_remaining_requests()
     if remaining > 0:
@@ -420,21 +426,23 @@ if raw_text and results and ai_enabled:
     # Disable button if rate limit exceeded
     button_disabled = not rate_limiter.can_make_request()
     
-    if st.button("🔍 Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
-        if rate_limiter.can_make_request():
-            with st.spinner("🧠 AI is analyzing the blood test results..."):
-                try:
-                    # Record this request
-                    rate_limiter.add_request()
-                    
-                    # Prepare data for AI
-                    lab_results_text = df.to_string()
-                    serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
-                    
-                    kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
-                    
-                    # Build context
-                    context = f"""
+    # Initial Analysis Button
+    if not st.session_state.initial_analysis_done:
+        if st.button("🔍 Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
+            if rate_limiter.can_make_request():
+                with st.spinner("🧠 AI is analyzing the blood test results..."):
+                    try:
+                        # Record this request
+                        rate_limiter.add_request()
+                        
+                        # Prepare data for AI
+                        lab_results_text = df.to_string()
+                        serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
+                        
+                        kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
+                        
+                        # Build context
+                        context = f"""
 Patient Context:
 - Age: {patient_age if patient_age > 0 else 'Not provided'}
 - Known Conditions: {patient_conditions if patient_conditions else 'None specified'}
@@ -453,7 +461,7 @@ Dialysis Adequacy:
 - Post-dialysis Weight: {post_weight} kg
 """
 
-                    prompt = f"""You are an experienced nephrology and dialysis nurse assistant. Analyze the following blood test results and provide clinical insights.
+                        prompt = f"""You are an experienced nephrology and dialysis nurse assistant. Analyze the following blood test results and provide clinical insights.
 
 {context}
 
@@ -475,60 +483,156 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                    # Call Gemini API with proper error handling
+                        # Call Gemini API with proper error handling
+                        try:
+                            # First, try to list available models to find the right one
+                            model_to_use = None
+                            for m in genai.list_models():
+                                if 'generateContent' in m.supported_generation_methods:
+                                    model_to_use = m.name
+                                    break
+                            
+                            if model_to_use is None:
+                                raise Exception("No compatible Gemini models found. Please check your API key is from aistudio.google.com")
+                            
+                            # Use the found model
+                            model = genai.GenerativeModel(model_to_use)
+                            response = model.generate_content(prompt)
+                            ai_response = response.text
+                            
+                        except Exception as model_error:
+                            # Fallback: try common model names
+                            model_names_to_try = [
+                                'gemini-1.5-flash',
+                                'gemini-1.5-pro', 
+                                'gemini-pro',
+                            ]
+                            
+                            ai_response = None
+                            for model_name in model_names_to_try:
+                                try:
+                                    model = genai.GenerativeModel(model_name)
+                                    response = model.generate_content(prompt)
+                                    ai_response = response.text
+                                    break
+                                except:
+                                    continue
+                            
+                            if ai_response is None:
+                                raise Exception(f"Could not find working model. Original error: {model_error}")
+                        
+                        # Store the initial analysis and context
+                        st.session_state.chat_history.append({
+                            "role": "assistant",
+                            "content": ai_response
+                        })
+                        st.session_state.initial_analysis_done = True
+                        st.session_state.context = context  # Store context for follow-up questions
+                        
+                        # Update remaining requests display
+                        new_remaining = rate_limiter.get_remaining_requests()
+                        st.info(f"✅ Analysis complete. {new_remaining} requests remaining this minute.")
+                        
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error generating AI analysis: {str(e)}")
+                        st.info("Please check the API configuration or try again later.")
+            else:
+                wait_time = int(rate_limiter.get_wait_time())
+                st.error(f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
+    
+    # Chat Interface (shown after initial analysis)
+    if st.session_state.initial_analysis_done:
+        st.markdown("---")
+        
+        # Display chat history
+        for message in st.session_state.chat_history:
+            if message["role"] == "user":
+                st.markdown(f'<div style="background-color: rgba(70, 130, 180, 0.3); padding: 1rem; border-radius: 10px; margin: 0.5rem 0; border-left: 4px solid #4682B4;">👤 <strong>You:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="ai-suggestion">🤖 <strong>AI Assistant:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
+        
+        # Chat input
+        st.markdown("### 💬 Ask Follow-up Questions")
+        
+        # Create columns for input and button
+        col1, col2 = st.columns([5, 1])
+        
+        with col1:
+            user_question = st.text_input(
+                "Ask anything about the blood test results...",
+                placeholder="e.g., What foods should this patient avoid? Why is the potassium high?",
+                key="user_input",
+                label_visibility="collapsed"
+            )
+        
+        with col2:
+            send_button = st.button("Send", type="primary", disabled=button_disabled, use_container_width=True)
+        
+        # Handle new message
+        if send_button and user_question:
+            if rate_limiter.can_make_request():
+                with st.spinner("🤖 Thinking..."):
                     try:
-                        # First, try to list available models to find the right one
+                        # Record this request
+                        rate_limiter.add_request()
+                        
+                        # Add user message to history
+                        st.session_state.chat_history.append({
+                            "role": "user",
+                            "content": user_question
+                        })
+                        
+                        # Build conversation context
+                        conversation = f"""
+You are an experienced nephrology and dialysis nurse assistant. Continue the conversation about this patient's blood test results.
+
+{st.session_state.context}
+
+Previous conversation:
+"""
+                        for msg in st.session_state.chat_history[-4:]:  # Last 2 exchanges
+                            role = "Nurse" if msg["role"] == "user" else "Assistant"
+                            conversation += f"\n{role}: {msg['content']}\n"
+                        
+                        conversation += f"\nNurse: {user_question}\n\nAssistant:"
+                        
+                        # Call AI
                         model_to_use = None
                         for m in genai.list_models():
                             if 'generateContent' in m.supported_generation_methods:
                                 model_to_use = m.name
                                 break
                         
-                        if model_to_use is None:
-                            raise Exception("No compatible Gemini models found. Please check your API key is from aistudio.google.com")
-                        
-                        # Use the found model
                         model = genai.GenerativeModel(model_to_use)
-                        response = model.generate_content(prompt)
+                        response = model.generate_content(conversation)
                         ai_response = response.text
                         
-                    except Exception as model_error:
-                        # Fallback: try common model names
-                        model_names_to_try = [
-                            'gemini-1.5-flash',
-                            'gemini-1.5-pro', 
-                            'gemini-pro',
-                        ]
+                        # Add AI response to history
+                        st.session_state.chat_history.append({
+                            "role": "assistant",
+                            "content": ai_response
+                        })
                         
-                        ai_response = None
-                        for model_name in model_names_to_try:
-                            try:
-                                model = genai.GenerativeModel(model_name)
-                                response = model.generate_content(prompt)
-                                ai_response = response.text
-                                break
-                            except:
-                                continue
+                        # Clear input and rerun
+                        st.rerun()
                         
-                        if ai_response is None:
-                            raise Exception(f"Could not find working model. Original error: {model_error}")
-                    
-                    # Display AI insights
-                    st.markdown(f'<div class="ai-suggestion">{ai_response}</div>', unsafe_allow_html=True)
-                    
-                    # Update remaining requests display
-                    new_remaining = rate_limiter.get_remaining_requests()
-                    st.info(f"✅ Analysis complete. {new_remaining} requests remaining this minute.")
-                    
-                    # Add disclaimer
-                    st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
-                    
-                except Exception as e:
-                    st.error(f"❌ Error generating AI analysis: {str(e)}")
-                    st.info("Please check the API configuration or try again later.")
-        else:
-            wait_time = int(rate_limiter.get_wait_time())
-            st.error(f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+            else:
+                wait_time = int(rate_limiter.get_wait_time())
+                st.error(f"⏱️ Rate limit reached. Please wait {wait_time} seconds.")
+        
+        # Clear chat button
+        if st.button("🔄 Start New Analysis", type="secondary"):
+            st.session_state.chat_history = []
+            st.session_state.initial_analysis_done = False
+            st.rerun()
+        
+        # Add disclaimer at the bottom
+        st.markdown("---")
+        st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
 
 elif raw_text and results and not ai_enabled:
     st.info("💡 AI analysis is not configured. Get your free API key from: https://aistudio.google.com/app/apikey")
