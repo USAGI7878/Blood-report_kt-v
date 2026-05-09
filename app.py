@@ -138,12 +138,6 @@ try:
 except Exception as e:
     ai_enabled = False
     st.warning(f"⚠️ AI features disabled. Error: {e}")
-# --- 显示 Serology 结果 ---
-sero_results = None
-if raw_text:
-    sero_results = extract_serology(raw_text)
-    st.subheader("🧬 Serology Results")
-    st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
 
 # --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
@@ -402,7 +396,12 @@ def extract_serology(text):
     results["Hep B Core antibody (HBcAb)"] = "Not done"
 
     return results
-
+# --- 显示 Serology 结果 ---
+sero_results = None
+if raw_text:
+    sero_results = extract_serology(raw_text)
+    st.subheader("🧬 Serology Results")
+    st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
 
 # --- AI Analysis Section ---
 if raw_text and results and ai_enabled:
