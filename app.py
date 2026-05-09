@@ -138,61 +138,9 @@ try:
 except Exception as e:
     ai_enabled = False
     st.warning(f"⚠️ AI features disabled. Error: {e}")
-
-# --- Extract Patient Info from PDF ---
-def extract_patient_info(text):
-    """Extract patient information from PDF text"""
-    info = {
-        "age": 0,
-        "name": "",
-        "id": ""
-    }
-    
-    # Extract Age - common patterns
-    age_patterns = [
-        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
-        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
-        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
-        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
-    ]
-    
-    for pattern in age_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            age = int(match.group(1))
-            if 0 < age < 120:  # Sanity check
-                info["age"] = age
-                break
-    
-    # Extract Patient Name - common patterns
-    name_patterns = [
-        r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
-        r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
-    ]
-    
-    for pattern in name_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            info["name"] = match.group(1).strip()
-            break
-    
-    # Extract Patient ID/MRN
-    id_patterns = [
-        r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
-        r"ID[:\s]+([A-Z0-9-]+)",
-    ]
-    
-    for pattern in id_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            info["id"] = match.group(1).strip()
-            break
-    
-    return info
-
 # --- Sidebar for Patient Context ---
 with st.sidebar:
-    st.header("⚙️ Patient Context (Optional)")
+    st.header("Patient Context (Optional)")
     
     # Initialize patient info in session state
     if 'patient_info' not in st.session_state:
@@ -204,15 +152,15 @@ with st.sidebar:
     
     # Rate limit display
     st.markdown("---")
-    st.header("📊 API Usage")
+    st.header("API Usage")
     remaining = rate_limiter.get_remaining_requests()
     st.metric("Requests Remaining", f"{remaining}/15")
     st.caption("Resets every minute")
     
     if ai_enabled:
-        st.success("✅ AI Analysis Enabled")
+        st.success("AI Analysis Enabled")
     else:
-        st.info("💡 Get free API key from: https://aistudio.google.com/app/apikey")
+        st.info("Get free API key from: https://aistudio.google.com/app/apikey")
 
 raw_text = ""
 results = []
@@ -267,6 +215,37 @@ for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
 
+with col1:
+    dialysis_time = st.number_input(
+        "Dialysis Duration (hours)", 
+        min_value=1.0, 
+        max_value=8.0, 
+        value=4.0, 
+        step=0.5,
+        help="é€æžæ—¶é•¿ï¼ˆå°æ—¶ï¼‰"
+    )
+
+with col2:
+    uf_volume = st.number_input(
+        "Ultrafiltration Volume (L)", 
+        min_value=0.0, 
+        max_value=5.0, 
+        value=2.0, 
+        step=0.1,
+        help="è¶…æ»¤é‡ï¼ˆå‡ï¼‰"
+    )
+
+with col3:
+    post_weight = st.number_input(
+        "Post-dialysis Weight (kg)", 
+        min_value=30.0, 
+        max_value=200.0, 
+        value=70.0, 
+        step=0.5,
+        help="é€æžåŽä½“é‡ï¼ˆå…¬æ–¤ï¼‰"
+    )
+
+st.markdown("---")
 # --- 上传 PDF ---
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 
@@ -311,6 +290,58 @@ if uploaded_file is not None:
         
         st.caption("📜 Raw Text Preview")
         st.text_area("Extracted Text", raw_text[:3000], height=200)
+
+# --- Extract Patient Info from PDF ---
+def extract_patient_info(text):
+    """Extract patient information from PDF text"""
+    info = {
+        "age": 0,
+        "name": "",
+        "id": ""
+    }
+    
+    # Extract Age - common patterns
+    age_patterns = [
+        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
+        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
+        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
+        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
+    ]
+    
+    for pattern in age_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            age = int(match.group(1))
+            if 0 < age < 120:  # Sanity check
+                info["age"] = age
+                break
+    
+    # Extract Patient Name - common patterns
+    name_patterns = [
+        r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+        r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+    ]
+    
+    for pattern in name_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["name"] = match.group(1).strip()
+            break
+    
+    # Extract Patient ID/MRN
+    id_patterns = [
+        r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
+        r"ID[:\s]+([A-Z0-9-]+)",
+    ]
+    
+    for pattern in id_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["id"] = match.group(1).strip()
+            break
+    
+    return info
+
 
 # --- 分析数据 ---
 if raw_text:
