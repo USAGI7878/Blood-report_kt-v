@@ -55,7 +55,7 @@ class RateLimiter:
 # Initialize rate limiter (15 requests per minute)
 rate_limiter = RateLimiter(max_requests=15, time_window=60)
 
-# UI设置
+# --- UI 样式 ---
 st.markdown("""
     <style>
         .stApp {
@@ -108,8 +108,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title(" AI-Powered Blood Report Analyzer")
-st.caption("“ Powered by Google Gemini")
+st.title("🧪 AI-Powered Blood Report Analyzer")
+st.caption("🆓 Powered by Google Gemini (Free AI)")
 
 # --- Load API Key from Secrets (Secure Method) ---
 try:
@@ -118,7 +118,7 @@ try:
     ai_enabled = True
     
     # DEBUG: List available models
-    with st.expander("ðŸ” DEBUG: Available AI Models", expanded=False):
+    with st.expander("🔍 DEBUG: Available AI Models", expanded=False):
         try:
             available_models = []
             for model in genai.list_models():
@@ -126,265 +126,18 @@ try:
                     available_models.append(model.name)
             
             if available_models:
-                st.success(f"âœ… Found {len(available_models)} compatible models:")
+                st.success(f"✅ Found {len(available_models)} compatible models:")
                 for model_name in available_models:
                     st.code(model_name)
             else:
-                st.error("âŒ No compatible models found!")
+                st.error("❌ No compatible models found!")
                 st.info("This means your API key might not have access to Gemini models.")
         except Exception as e:
-            st.error(f"âŒ Error listing models: {e}")
+            st.error(f"❌ Error listing models: {e}")
             
 except Exception as e:
     ai_enabled = False
-    st.warning(f"âš ï¸ AI features disabled. Error: {e}")
-
-
-
-# --- Sidebar for Patient Context ---
-with st.sidebar:
-    st.header("Patient Context (Optional)")
-    
-    # Initialize patient info in session state
-    if 'patient_info' not in st.session_state:
-        st.session_state.patient_info = {"age": 0, "name": "", "id": ""}
-    
-    patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=st.session_state.patient_info["age"], help="Auto-extracted from PDF or enter manually")
-    patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
-    current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
-    
-    # Rate limit display
-    st.markdown("---")
-    st.header("API Usage")
-    remaining = rate_limiter.get_remaining_requests()
-    st.metric("Requests Remaining", f"{remaining}/15")
-    st.caption("Resets every minute")
-    
-    if ai_enabled:
-        st.success("AI Analysis Enabled")
-    else:
-        st.info("Get free API key from: https://aistudio.google.com/app/apikey")
-
-raw_text = ""
-results = []
-
-# --- 分析pdf报告---
-items_info = {
-    "Creatinine": ("Âµmol/L", 44, 110),
-    "Uric Acid":("Âµmol/L", 120, 420),
-    "Urea": ("mmol/L", 3.0, 9.0),
-    "Potassium": ("mmol/L", 3.5, 5.1),
-    "Sodium": ("mmol/L", 135, 145),
-    "Albumin": ("g/L", 35, 50),
-    "Bilirubin": ("Âµmol/L", None, None),
-    "Calcium": ("mmol/L", 2.10, 2.55),
-    "Corrected Calcium": ("mmol/L", 2.10, 2.55),
-    "Phosphate": ("mmol/L", 0.65, 1.45),
-    "Alkaline Phosphatase": ("U/L", 40, 130),
-    "AST": ("U/L", None, None),
-    "ALT": ("U/L", None, None),
-    "Haemoglobin": ("g/dL", 120, 150),
-    "White Cell Count": ("Âµl", None, None),
-    "Hypochromic cells": ("%", None, None),
-    "Platelets": ("10^9/L", 150, 410),
-    "Glucose": ("mmol/L", 3.9, 7.7),
-    "Total Protein": ("g/L", None, None),
-    "HbA1C": ("%", None, None),
-    "Serum Iron": ("Âµmol/L", 9.0, 26.0),
-    "Sr. UIBC": ("Âµmol/L", None, None),
-    "Total Iron Binding Capacity": ("Âµmol/L", None, None),
-    "Saturation": ("%", 13, 51),
-    "Ferritin": ("Âµg/L", None, None),
-    "Total Chol": ("mmol/L", None, None),
-    "Triglyceride": ("mmol/L", None, None),
-    "LDL-C L": ("mmol/L", None, None),
-    "HDL-C": ("mmol/L", None, None),
-    "Intact Parathyroid Hormone": ("pg/mL", 1.6, 6.9),
-    "Lymphocytes": ("HSD/CU mm", 1.0, 4.0),
-    "Urea - Post Dialysis": ("mmol/L", 3.0, 9.0),
-    "GGT": ("U/L", None, None),
-}
-
-aliases = {
-    "Urea": ["Blood Urea", "Urea (BUN)"],
-    "Urea - Post Dialysis": ["Postdialysis Urea", "Post BUN"],
-    "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
-    "ALT": ["è°·è‰è½¬æ°¨åŸºé…¶", "ALT/SGPT (U/L)","A L T"],
-    "AST": ["è°·ä¸™è½¬æ°¨åŸºé…¶", "AST/SGOT (U/L)","A S T"],
-}
-
-reverse_alias = {}
-for key, alist in aliases.items():
-    for alias in alist:
-        reverse_alias.setdefault(alias, []).append(key)
-# --- ä¸Šä¼  PDF ä¹‹å‰ï¼Œå…ˆè®©ç”¨æˆ·å¡«å†™é€æžå‚æ•° ---
-st.subheader("ðŸ“‹ è¯·å…ˆå¡«å†™é€æžå‚æ•°")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    dialysis_time = st.number_input(
-        "Dialysis Duration (hours)", 
-        min_value=1.0, 
-        max_value=8.0, 
-        value=4.0, 
-        step=0.5,
-        help="é€æžæ—¶é•¿ï¼ˆå°æ—¶ï¼‰"
-    )
-
-with col2:
-    uf_volume = st.number_input(
-        "Ultrafiltration Volume (L)", 
-        min_value=0.0, 
-        max_value=5.0, 
-        value=2.0, 
-        step=0.1,
-        help="è¶…æ»¤é‡ï¼ˆå‡ï¼‰"
-    )
-
-with col3:
-    post_weight = st.number_input(
-        "Post-dialysis Weight (kg)", 
-        min_value=30.0, 
-        max_value=200.0, 
-        value=70.0, 
-        step=0.5,
-        help="é€æžåŽä½“é‡ï¼ˆå…¬æ–¤ï¼‰"
-    )
-
-st.markdown("---")
-
-# --- ä¸Šä¼  PDF ---
-uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
-
-if uploaded_file is not None:
-    file_bytes = uploaded_file.read()
-    raw_text = ""
-    page_count = 0
-
-    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-        page_count = doc.page_count
-        for i, page in enumerate(doc):
-            text = page.get_text("text").strip()
-            if text:
-                raw_text += text.replace("\n", " ")
-        
-    # Simple success message (outside the 'with' block)
-    st.success(f"âœ… PDF processed successfully ({page_count} page{'s' if page_count > 1 else ''})")
-    
-    # Extract patient information from PDF
-    patient_info = extract_patient_info(raw_text)
-    st.session_state.patient_info = patient_info
-    
-    # Display extracted patient info
-    if patient_info["age"] > 0 or patient_info["name"] or patient_info["id"]:
-        with st.expander("ðŸ‘¤ Auto-Extracted Patient Information", expanded=True):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if patient_info["name"]:
-                    st.metric("Patient Name", patient_info["name"])
-            with col2:
-                if patient_info["age"] > 0:
-                    st.metric("Age", f"{patient_info['age']} years")
-            with col3:
-                if patient_info["id"]:
-                    st.metric("Patient ID", patient_info["id"])
-
-    # Debug section - collapsed by default
-    with st.expander("ðŸ› Debug Information", expanded=False):
-        st.caption("ðŸ“„ Page Extraction Details")
-        for i in range(page_count):
-            st.text(f"âœ“ Page {i+1} extracted")
-        
-        st.caption("ðŸ“œ Raw Text Preview")
-        st.text_area("Extracted Text", raw_text[:3000], height=200)
-
-# --- åˆ†æžæ•°æ® ---
-if raw_text:
-    for item, (unit, low, high) in items_info.items():
-        patterns = [item] + reverse_alias.get(item, [])
-        value_found = False
-        for pattern in patterns:
-            match = re.search(rf"{pattern}\D*([\d.]+)", raw_text, re.IGNORECASE)
-            if match:
-                try:
-                    value = float(match.group(1))
-                    mark = "*" if (low and value < low) or (high and value > high) else ""
-                    ref = f"{low}-{high}" if low and high else "-"
-                    results.append([item, f"{value}{mark}", ref])
-                except:
-                    results.append([item, "âš ï¸ Failed to parse", "-"])
-                value_found = True
-                break
-        if not value_found:
-            results.append([item, "Not found", "-"])
-
-    df = pd.DataFrame(results, columns=["Test", "Value", "Reference Range"])
-    st.subheader("ðŸ§ª Lab Result Analysis")
-    st.dataframe(df)
-
-# --- Serology Data Extraction ---
-def interpret_result(text):
-    """Interpret positive/negative keywords in text."""
-    if any(word in text.lower() for word in ["not detected", "negative", "non reactive"]):
-        return "Negative"
-    elif any(word in text.lower() for word in ["detected", "positive", "reactive"]):
-        return "Positive"
-    else:
-        return "Not done"
-
-def extract_serology(text):
-    """Extract serology test results from report text."""
-    results = {}
-
-    # HIV
-    hiv = re.search(r"HIV.*?(Not Detected|Detected|Negative|Positive|Reactive|Non Reactive)", text, re.IGNORECASE)
-    results["Anti HIV antibody"] = interpret_result(hiv.group(1)) if hiv else "Not done"
-
-    # Hepatitis B surface antigen
-    hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
-    results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
-
-    # Hepatitis B surface antibody (HBsAb)
-    hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
-    results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
-
-    # Hepatitis C antibody
-    hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
-    results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
-
-    results["Hep B Core antibody (HBcAb)"] = "Not done"
-
-    return results
-# --- æ˜¾ç¤º Serology ç»“æžœ ---
-sero_results = None
-if raw_text:
-    sero_results = extract_serology(raw_text)
-    st.subheader("ðŸ§¬ Serology Results")
-    st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
-# --- KT/V & URR è®¡ç®— ---
-results_dict = {row[0]: row[1] for row in results}
-
-
-kt_v = None
-URR = None
-
-try:
-    urea = float(results_dict["Urea"].replace("*", ""))
-    post_urea = float(results_dict["Urea - Post Dialysis"].replace("*", ""))
-
-    R = post_urea / urea
-    URR = round((1 - R) * 100, 2)
-    kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
-    kt_v = round(kt_v, 2)
-
-    st.subheader("â³ KT/V & URR Results")
-    st.table(pd.DataFrame({
-        "Metric": ["URR (%)", "KT/V"],
-        "Value": [URR, kt_v]
-    }))
-except Exception as e:
-    st.warning(f"âš ï¸ Cannot calculate KT/V & URR: {e}")
+    st.warning(f"⚠️ AI features disabled. Error: {e}")
 
 # --- Extract Patient Info from PDF ---
 def extract_patient_info(text):
@@ -436,10 +189,225 @@ def extract_patient_info(text):
             break
     
     return info
+
+# --- Sidebar for Patient Context ---
+with st.sidebar:
+    st.header("⚙️ Patient Context (Optional)")
+    
+    # Initialize patient info in session state
+    if 'patient_info' not in st.session_state:
+        st.session_state.patient_info = {"age": 0, "name": "", "id": ""}
+    
+    patient_age = st.number_input("Patient Age", min_value=0, max_value=120, value=st.session_state.patient_info["age"], help="Auto-extracted from PDF or enter manually")
+    patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
+    current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
+    
+    # Rate limit display
+    st.markdown("---")
+    st.header("📊 API Usage")
+    remaining = rate_limiter.get_remaining_requests()
+    st.metric("Requests Remaining", f"{remaining}/15")
+    st.caption("Resets every minute")
+    
+    if ai_enabled:
+        st.success("✅ AI Analysis Enabled")
+    else:
+        st.info("💡 Get free API key from: https://aistudio.google.com/app/apikey")
+
+raw_text = ""
+results = []
+
+# --- 检查项目 ---
+items_info = {
+    "Creatinine": ("µmol/L", 44, 110),
+    "Uric Acid":("µmol/L", 120, 420),
+    "Urea": ("mmol/L", 3.0, 9.0),
+    "Potassium": ("mmol/L", 3.5, 5.1),
+    "Sodium": ("mmol/L", 135, 145),
+    "Albumin": ("g/L", 35, 50),
+    "Bilirubin": ("µmol/L", None, None),
+    "Calcium": ("mmol/L", 2.10, 2.55),
+    "Corrected Calcium": ("mmol/L", 2.10, 2.55),
+    "Phosphate": ("mmol/L", 0.65, 1.45),
+    "Alkaline Phosphatase": ("U/L", 40, 130),
+    "AST": ("U/L", None, None),
+    "ALT": ("U/L", None, None),
+    "Haemoglobin": ("g/dL", 120, 150),
+    "White Cell Count": ("µl", None, None),
+    "Hypochromic cells": ("%", None, None),
+    "Platelets": ("10^9/L", 150, 410),
+    "Glucose": ("mmol/L", 3.9, 7.7),
+    "Total Protein": ("g/L", None, None),
+    "HbA1C": ("%", None, None),
+    "Serum Iron": ("µmol/L", 9.0, 26.0),
+    "Sr. UIBC": ("µmol/L", None, None),
+    "Total Iron Binding Capacity": ("µmol/L", None, None),
+    "Saturation": ("%", 13, 51),
+    "Ferritin": ("µg/L", None, None),
+    "Total Chol": ("mmol/L", None, None),
+    "Triglyceride": ("mmol/L", None, None),
+    "LDL-C L": ("mmol/L", None, None),
+    "HDL-C": ("mmol/L", None, None),
+    "Intact Parathyroid Hormone": ("pg/mL", 1.6, 6.9),
+    "Lymphocytes": ("HSD/CU mm", 1.0, 4.0),
+    "Urea - Post Dialysis": ("mmol/L", 3.0, 9.0),
+    "GGT": ("U/L", None, None),
+}
+
+aliases = {
+    "Urea": ["Blood Urea", "Urea (BUN)"],
+    "Urea - Post Dialysis": ["Postdialysis Urea", "Post BUN"],
+    "Sr. Creatinine": ["Creatinine", "Serum Creatinine"],
+    "ALT": ["谷草转氨基酶", "ALT/SGPT (U/L)","A L T"],
+    "AST": ["谷丙转氨基酶", "AST/SGOT (U/L)","A S T"],
+}
+
+reverse_alias = {}
+for key, alist in aliases.items():
+    for alias in alist:
+        reverse_alias.setdefault(alias, []).append(key)
+
+# --- 上传 PDF ---
+uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
+
+if uploaded_file is not None:
+    file_bytes = uploaded_file.read()
+    raw_text = ""
+    page_count = 0
+
+    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        page_count = doc.page_count
+        for i, page in enumerate(doc):
+            text = page.get_text("text").strip()
+            if text:
+                raw_text += text.replace("\n", " ")
+        
+    # Simple success message (outside the 'with' block)
+    st.success(f"✅ PDF processed successfully ({page_count} page{'s' if page_count > 1 else ''})")
+    
+    # Extract patient information from PDF
+    patient_info = extract_patient_info(raw_text)
+    st.session_state.patient_info = patient_info
+    
+    # Display extracted patient info
+    if patient_info["age"] > 0 or patient_info["name"] or patient_info["id"]:
+        with st.expander("👤 Auto-Extracted Patient Information", expanded=True):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if patient_info["name"]:
+                    st.metric("Patient Name", patient_info["name"])
+            with col2:
+                if patient_info["age"] > 0:
+                    st.metric("Age", f"{patient_info['age']} years")
+            with col3:
+                if patient_info["id"]:
+                    st.metric("Patient ID", patient_info["id"])
+
+    # Debug section - collapsed by default
+    with st.expander("🐛 Debug Information", expanded=False):
+        st.caption("📄 Page Extraction Details")
+        for i in range(page_count):
+            st.text(f"✓ Page {i+1} extracted")
+        
+        st.caption("📜 Raw Text Preview")
+        st.text_area("Extracted Text", raw_text[:3000], height=200)
+
+# --- 分析数据 ---
+if raw_text:
+    for item, (unit, low, high) in items_info.items():
+        patterns = [item] + reverse_alias.get(item, [])
+        value_found = False
+        for pattern in patterns:
+            match = re.search(rf"{pattern}\D*([\d.]+)", raw_text, re.IGNORECASE)
+            if match:
+                try:
+                    value = float(match.group(1))
+                    mark = "*" if (low and value < low) or (high and value > high) else ""
+                    ref = f"{low}-{high}" if low and high else "-"
+                    results.append([item, f"{value}{mark}", ref])
+                except:
+                    results.append([item, "⚠️ Failed to parse", "-"])
+                value_found = True
+                break
+        if not value_found:
+            results.append([item, "Not found", "-"])
+
+    df = pd.DataFrame(results, columns=["Test", "Value", "Reference Range"])
+    st.subheader("🧪 Lab Result Analysis")
+    st.dataframe(df)
+
+# --- Serology Data Extraction ---
+def interpret_result(text):
+    """Interpret positive/negative keywords in text."""
+    if any(word in text.lower() for word in ["not detected", "negative", "non reactive"]):
+        return "Negative"
+    elif any(word in text.lower() for word in ["detected", "positive", "reactive"]):
+        return "Positive"
+    else:
+        return "Not done"
+
+def extract_serology(text):
+    """Extract serology test results from report text."""
+    results = {}
+
+    # HIV
+    hiv = re.search(r"HIV.*?(Not Detected|Detected|Negative|Positive|Reactive|Non Reactive)", text, re.IGNORECASE)
+    results["Anti HIV antibody"] = interpret_result(hiv.group(1)) if hiv else "Not done"
+
+    # Hepatitis B surface antigen
+    hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
+    results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
+
+    # Hepatitis B surface antibody (HBsAb)
+    hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
+    results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
+
+    # Hepatitis C antibody
+    hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
+    results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
+
+    results["Hep B Core antibody (HBcAb)"] = "Not done"
+
+    return results
+
+# --- 显示 Serology 结果 ---
+sero_results = None
+if raw_text:
+    sero_results = extract_serology(raw_text)
+    st.subheader("🧬 Serology Results")
+    st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
+
+# --- KT/V & URR 计算 ---
+results_dict = {row[0]: row[1] for row in results}
+
+dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
+uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
+post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
+
+kt_v = None
+URR = None
+
+try:
+    urea = float(results_dict["Urea"].replace("*", ""))
+    post_urea = float(results_dict["Urea - Post Dialysis"].replace("*", ""))
+
+    R = post_urea / urea
+    URR = round((1 - R) * 100, 2)
+    kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
+    kt_v = round(kt_v, 2)
+
+    st.subheader("⏳ KT/V & URR Results")
+    st.table(pd.DataFrame({
+        "Metric": ["URR (%)", "KT/V"],
+        "Value": [URR, kt_v]
+    }))
+except Exception as e:
+    st.warning(f"⚠️ Cannot calculate KT/V & URR: {e}")
+
 # --- AI Analysis Section ---
 if raw_text and results and ai_enabled:
     st.markdown("---")
-    st.subheader("ðŸ¤– AI-Powered Clinical Insights")
+    st.subheader("🤖 AI-Powered Clinical Insights")
     
     # Initialize chat history in session state
     if 'chat_history' not in st.session_state:
@@ -450,19 +418,19 @@ if raw_text and results and ai_enabled:
     # Show rate limit status
     remaining = rate_limiter.get_remaining_requests()
     if remaining > 0:
-        st.markdown(f'<div class="rate-limit-info">ðŸ“Š AI requests remaining: <strong>{remaining}/15</strong> (resets every minute)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rate-limit-info">📊 AI requests remaining: <strong>{remaining}/15</strong> (resets every minute)</div>', unsafe_allow_html=True)
     else:
         wait_time = int(rate_limiter.get_wait_time())
-        st.markdown(f'<div class="warning-box">â±ï¸ Rate limit reached. Please wait <strong>{wait_time}</strong> seconds before next request.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="warning-box">⏱️ Rate limit reached. Please wait <strong>{wait_time}</strong> seconds before next request.</div>', unsafe_allow_html=True)
     
     # Disable button if rate limit exceeded
     button_disabled = not rate_limiter.can_make_request()
     
     # Initial Analysis Button
     if not st.session_state.initial_analysis_done:
-        if st.button("ðŸ” Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
+        if st.button("🔍 Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
             if rate_limiter.can_make_request():
-                with st.spinner("ðŸ§  AI is analyzing the blood test results..."):
+                with st.spinner("🧠 AI is analyzing the blood test results..."):
                     try:
                         # Record this request
                         rate_limiter.add_request()
@@ -503,7 +471,7 @@ Please provide:
 
 2. **Key Observations**: Summarize the overall picture - what do these results tell us about the patient's condition?
 
-3. **Dialysis Adequacy Assessment**: Evaluate the KT/V and URR values (KT/V target: â‰¥1.2, URR target: â‰¥65%)
+3. **Dialysis Adequacy Assessment**: Evaluate the KT/V and URR values (KT/V target: ≥1.2, URR target: ≥65%)
 
 4. **Clinical Recommendations**: 
    - Monitoring suggestions
@@ -563,16 +531,16 @@ Please be specific, practical, and prioritize patient safety. Use clear language
                         
                         # Update remaining requests display
                         new_remaining = rate_limiter.get_remaining_requests()
-                        st.info(f"âœ… Analysis complete. {new_remaining} requests remaining this minute.")
+                        st.info(f"✅ Analysis complete. {new_remaining} requests remaining this minute.")
                         
                         st.rerun()
                         
                     except Exception as e:
-                        st.error(f"âŒ Error generating AI analysis: {str(e)}")
+                        st.error(f"❌ Error generating AI analysis: {str(e)}")
                         st.info("Please check the API configuration or try again later.")
             else:
                 wait_time = int(rate_limiter.get_wait_time())
-                st.error(f"â±ï¸ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
+                st.error(f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
     
     # Chat Interface (shown after initial analysis)
     if st.session_state.initial_analysis_done:
@@ -581,12 +549,12 @@ Please be specific, practical, and prioritize patient safety. Use clear language
         # Display chat history
         for message in st.session_state.chat_history:
             if message["role"] == "user":
-                st.markdown(f'<div style="background-color: rgba(70, 130, 180, 0.3); padding: 1rem; border-radius: 10px; margin: 0.5rem 0; border-left: 4px solid #4682B4;">ðŸ‘¤ <strong>You:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color: rgba(70, 130, 180, 0.3); padding: 1rem; border-radius: 10px; margin: 0.5rem 0; border-left: 4px solid #4682B4;">👤 <strong>You:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="ai-suggestion">ðŸ¤– <strong>AI Assistant:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="ai-suggestion">🤖 <strong>AI Assistant:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
         
         # Chat input
-        st.markdown("### ðŸ’¬ Ask Follow-up Questions")
+        st.markdown("### 💬 Ask Follow-up Questions")
         
         # Create columns for input and button
         col1, col2 = st.columns([5, 1])
@@ -605,7 +573,7 @@ Please be specific, practical, and prioritize patient safety. Use clear language
         # Handle new message
         if send_button and user_question:
             if rate_limiter.can_make_request():
-                with st.spinner("ðŸ¤– Thinking..."):
+                with st.spinner("🤖 Thinking..."):
                     try:
                         # Record this request
                         rate_limiter.add_request()
@@ -651,20 +619,20 @@ Previous conversation:
                         st.rerun()
                         
                     except Exception as e:
-                        st.error(f"âŒ Error: {str(e)}")
+                        st.error(f"❌ Error: {str(e)}")
             else:
                 wait_time = int(rate_limiter.get_wait_time())
-                st.error(f"â±ï¸ Rate limit reached. Please wait {wait_time} seconds.")
+                st.error(f"⏱️ Rate limit reached. Please wait {wait_time} seconds.")
         
         # Clear chat button
-        if st.button("ðŸ”„ Start New Analysis", type="secondary"):
+        if st.button("🔄 Start New Analysis", type="secondary"):
             st.session_state.chat_history = []
             st.session_state.initial_analysis_done = False
             st.rerun()
         
         # Add disclaimer at the bottom
         st.markdown("---")
-        st.warning("âš ï¸ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
+        st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
 
 elif raw_text and results and not ai_enabled:
-    st.info("ðŸ’¡ AI analysis is not configured. Get your free API key from: https://aistudio.google.com/app/apikey")
+    st.info("💡 AI analysis is not configured. Get your free API key from: https://aistudio.google.com/app/apikey")
