@@ -217,6 +217,46 @@ reverse_alias = {}
 for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
+# --- 上传 PDF 之前，先让用户填写透析参数 ---
+st.subheader("📋 请先填写透析参数")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    dialysis_time = st.number_input(
+        "Dialysis Duration (hours)", 
+        min_value=1.0, 
+        max_value=8.0, 
+        value=4.0, 
+        step=0.5,
+        help="透析时长（小时）"
+    )
+
+with col2:
+    uf_volume = st.number_input(
+        "Ultrafiltration Volume (L)", 
+        min_value=0.0, 
+        max_value=5.0, 
+        value=2.0, 
+        step=0.1,
+        help="超滤量（升）"
+    )
+
+with col3:
+    post_weight = st.number_input(
+        "Post-dialysis Weight (kg)", 
+        min_value=30.0, 
+        max_value=200.0, 
+        value=70.0, 
+        step=0.5,
+        help="透析后体重（公斤）"
+    )
+
+st.markdown("---")
+
+# --- 上传 PDF ---
+st.subheader("📄 上传血液报告")
+uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 
 # --- 上传 PDF ---
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
@@ -329,9 +369,6 @@ if raw_text:
 # --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
 
-dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
-uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
-post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
 
 kt_v = None
 URR = None
