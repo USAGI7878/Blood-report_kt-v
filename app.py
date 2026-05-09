@@ -96,7 +96,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🧪 AI-Powered Blood Report Analyzer")
-st.caption("🆓 Powered by Google Gemini (Free AI)")
+st.caption("Powered by Google Gemini")
 
 # --- Load API Key from Secrets (Secure Method) ---
 try:
