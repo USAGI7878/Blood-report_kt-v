@@ -139,83 +139,7 @@ except Exception as e:
     ai_enabled = False
     st.warning(f"⚠️ AI features disabled. Error: {e}")
 
-# --- KT/V & URR 计算 ---
-results_dict = {row[0]: row[1] for row in results}
 
-dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
-uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
-post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
-
-kt_v = None
-URR = None
-
-try:
-    urea = float(results_dict["Urea"].replace("*", ""))
-    post_urea = float(results_dict["Urea - Post Dialysis"].replace("*", ""))
-
-    R = post_urea / urea
-    URR = round((1 - R) * 100, 2)
-    kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
-    kt_v = round(kt_v, 2)
-
-    st.subheader("⏳ KT/V & URR Results")
-    st.table(pd.DataFrame({
-        "Metric": ["URR (%)", "KT/V"],
-        "Value": [URR, kt_v]
-    }))
-except Exception as e:
-    st.warning(f"⚠️ Cannot calculate KT/V & URR: {e}")
-
-# --- Extract Patient Info from PDF ---
-def extract_patient_info(text):
-    """Extract patient information from PDF text"""
-    info = {
-        "age": 0,
-        "name": "",
-        "id": ""
-    }
-    
-    # Extract Age - common patterns
-    age_patterns = [
-        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
-        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
-        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
-        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
-    ]
-    
-    for pattern in age_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            age = int(match.group(1))
-            if 0 < age < 120:  # Sanity check
-                info["age"] = age
-                break
-    
-    # Extract Patient Name - common patterns
-    name_patterns = [
-        r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
-        r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
-    ]
-    
-    for pattern in name_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            info["name"] = match.group(1).strip()
-            break
-    
-    # Extract Patient ID/MRN
-    id_patterns = [
-        r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
-        r"ID[:\s]+([A-Z0-9-]+)",
-    ]
-    
-    for pattern in id_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            info["id"] = match.group(1).strip()
-            break
-    
-    return info
 
 # --- Sidebar for Patient Context ---
 with st.sidebar:
@@ -402,7 +326,83 @@ if raw_text:
     sero_results = extract_serology(raw_text)
     st.subheader("🧬 Serology Results")
     st.table(pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]))
+# --- KT/V & URR 计算 ---
+results_dict = {row[0]: row[1] for row in results}
 
+dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
+uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
+post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
+
+kt_v = None
+URR = None
+
+try:
+    urea = float(results_dict["Urea"].replace("*", ""))
+    post_urea = float(results_dict["Urea - Post Dialysis"].replace("*", ""))
+
+    R = post_urea / urea
+    URR = round((1 - R) * 100, 2)
+    kt_v = -math.log(R - 0.008 * dialysis_time) + ((4 - 3.5 * R) * (uf_volume / post_weight))
+    kt_v = round(kt_v, 2)
+
+    st.subheader("⏳ KT/V & URR Results")
+    st.table(pd.DataFrame({
+        "Metric": ["URR (%)", "KT/V"],
+        "Value": [URR, kt_v]
+    }))
+except Exception as e:
+    st.warning(f"⚠️ Cannot calculate KT/V & URR: {e}")
+
+# --- Extract Patient Info from PDF ---
+def extract_patient_info(text):
+    """Extract patient information from PDF text"""
+    info = {
+        "age": 0,
+        "name": "",
+        "id": ""
+    }
+    
+    # Extract Age - common patterns
+    age_patterns = [
+        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
+        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
+        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
+        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
+    ]
+    
+    for pattern in age_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            age = int(match.group(1))
+            if 0 < age < 120:  # Sanity check
+                info["age"] = age
+                break
+    
+    # Extract Patient Name - common patterns
+    name_patterns = [
+        r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+        r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
+    ]
+    
+    for pattern in name_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["name"] = match.group(1).strip()
+            break
+    
+    # Extract Patient ID/MRN
+    id_patterns = [
+        r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
+        r"ID[:\s]+([A-Z0-9-]+)",
+    ]
+    
+    for pattern in id_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            info["id"] = match.group(1).strip()
+            break
+    
+    return info
 # --- AI Analysis Section ---
 if raw_text and results and ai_enabled:
     st.markdown("---")
