@@ -55,7 +55,7 @@ class RateLimiter:
 # Initialize rate limiter (15 requests per minute)
 rate_limiter = RateLimiter(max_requests=15, time_window=60)
 
-# --- UI æ ·å¼ ---
+# UI设置
 st.markdown("""
     <style>
         .stApp {
@@ -108,8 +108,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("ðŸ§ª AI-Powered Blood Report Analyzer")
-st.caption("ðŸ†“ Powered by Google Gemini (Free AI)")
+st.title(" AI-Powered Blood Report Analyzer")
+st.caption("“ Powered by Google Gemini")
 
 # --- Load API Key from Secrets (Secure Method) ---
 try:
@@ -143,7 +143,7 @@ except Exception as e:
 
 # --- Sidebar for Patient Context ---
 with st.sidebar:
-    st.header("âš™ï¸ Patient Context (Optional)")
+    st.header("Patient Context (Optional)")
     
     # Initialize patient info in session state
     if 'patient_info' not in st.session_state:
@@ -155,20 +155,20 @@ with st.sidebar:
     
     # Rate limit display
     st.markdown("---")
-    st.header("ðŸ“Š API Usage")
+    st.header("API Usage")
     remaining = rate_limiter.get_remaining_requests()
     st.metric("Requests Remaining", f"{remaining}/15")
     st.caption("Resets every minute")
     
     if ai_enabled:
-        st.success("âœ… AI Analysis Enabled")
+        st.success("AI Analysis Enabled")
     else:
-        st.info("ðŸ’¡ Get free API key from: https://aistudio.google.com/app/apikey")
+        st.info("Get free API key from: https://aistudio.google.com/app/apikey")
 
 raw_text = ""
 results = []
 
-# --- æ£€æŸ¥é¡¹ç›® ---
+# --- 分析pdf报告---
 items_info = {
     "Creatinine": ("Âµmol/L", 44, 110),
     "Uric Acid":("Âµmol/L", 120, 420),
