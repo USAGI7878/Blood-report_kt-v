@@ -10,46 +10,33 @@ from collections import deque
 # --- Rate Limiter Class ---
 class RateLimiter:
     def __init__(self, max_requests=15, time_window=60):
-        """
-        max_requests: Maximum number of requests allowed
-        time_window: Time window in seconds (default 60s = 1 minute)
-        """
         if 'request_times' not in st.session_state:
             st.session_state.request_times = deque()
         self.max_requests = max_requests
         self.time_window = time_window
     
     def can_make_request(self):
-        """Check if a new request can be made"""
         now = datetime.now()
-        # Remove requests older than time window
         while st.session_state.request_times and \
               (now - st.session_state.request_times[0]).total_seconds() > self.time_window:
             st.session_state.request_times.popleft()
-        
         return len(st.session_state.request_times) < self.max_requests
     
     def add_request(self):
-        """Record a new request"""
         st.session_state.request_times.append(datetime.now())
     
     def get_wait_time(self):
-        """Get seconds until next request is allowed"""
         if len(st.session_state.request_times) < self.max_requests:
             return 0
-        
         oldest_request = st.session_state.request_times[0]
         elapsed = (datetime.now() - oldest_request).total_seconds()
         return max(0, self.time_window - elapsed)
     
     def get_remaining_requests(self):
-        """Get number of remaining requests in current window"""
         now = datetime.now()
-        # Clean old requests
         while st.session_state.request_times and \
               (now - st.session_state.request_times[0]).total_seconds() > self.time_window:
             st.session_state.request_times.popleft()
-        
         return self.max_requests - len(st.session_state.request_times)
 
 # Initialize rate limiter (15 requests per minute)
@@ -117,7 +104,6 @@ try:
     genai.configure(api_key=api_key)
     ai_enabled = True
     
-    # DEBUG: List available models
     with st.expander("🔍 DEBUG: Available AI Models", expanded=False):
         try:
             available_models = []
@@ -141,47 +127,36 @@ except Exception as e:
 
 # --- Extract Patient Info from PDF ---
 def extract_patient_info(text):
-    """Extract patient information from PDF text"""
-    info = {
-        "age": 0,
-        "name": "",
-        "id": ""
-    }
+    info = {"age": 0, "name": "", "id": ""}
     
-    # Extract Age - common patterns
     age_patterns = [
-        r"Age[:\s]+(\d{1,3})",  # Age: 45 or Age 45
-        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",  # Age: 45 years
-        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",  # 45 years old
-        r"DOB.*?Age[:\s]+(\d{1,3})",  # DOB ... Age: 45
+        r"Age[:\s]+(\d{1,3})",
+        r"Age[:\s]+(\d{1,3})\s*(?:years|yrs|y)",
+        r"(\d{1,3})\s*(?:years old|yrs old|y/o)",
+        r"DOB.*?Age[:\s]+(\d{1,3})",
     ]
-    
     for pattern in age_patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             age = int(match.group(1))
-            if 0 < age < 120:  # Sanity check
+            if 0 < age < 120:
                 info["age"] = age
                 break
     
-    # Extract Patient Name - common patterns
     name_patterns = [
         r"Patient Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
         r"Name[:\s]+([A-Z][a-zA-Z\s]+?)(?:\n|(?:Age|DOB|ID|MRN))",
     ]
-    
     for pattern in name_patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             info["name"] = match.group(1).strip()
             break
     
-    # Extract Patient ID/MRN
     id_patterns = [
         r"(?:Patient ID|MRN|Medical Record)[:\s]+([A-Z0-9-]+)",
         r"ID[:\s]+([A-Z0-9-]+)",
     ]
-    
     for pattern in id_patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
@@ -194,7 +169,6 @@ def extract_patient_info(text):
 with st.sidebar:
     st.header("⚙️ Patient Context (Optional)")
     
-    # Initialize patient info in session state
     if 'patient_info' not in st.session_state:
         st.session_state.patient_info = {"age": 0, "name": "", "id": ""}
     
@@ -202,7 +176,6 @@ with st.sidebar:
     patient_conditions = st.text_area("Known Conditions", placeholder="e.g., Diabetes, Hypertension, CKD Stage 5", help="Enter any known medical conditions")
     current_medications = st.text_area("Current Medications", placeholder="e.g., Insulin, Lisinopril, EPO", help="List current medications")
     
-    # Rate limit display
     st.markdown("---")
     st.header("📊 API Usage")
     remaining = rate_limiter.get_remaining_requests()
@@ -267,6 +240,18 @@ for key, alist in aliases.items():
     for alias in alist:
         reverse_alias.setdefault(alias, []).append(key)
 
+# --- ✅ Dialysis Parameters (moved above file uploader) ---
+st.subheader("⏱️ Dialysis Parameters")
+col1, col2, col3 = st.columns(3)
+with col1:
+    dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
+with col2:
+    uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
+with col3:
+    post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
+
+st.markdown("---")
+
 # --- 上传 PDF ---
 uploaded_file = st.file_uploader("Upload a Lab Report PDF", type="pdf")
 
@@ -282,14 +267,11 @@ if uploaded_file is not None:
             if text:
                 raw_text += text.replace("\n", " ")
         
-    # Simple success message (outside the 'with' block)
     st.success(f"✅ PDF processed successfully ({page_count} page{'s' if page_count > 1 else ''})")
     
-    # Extract patient information from PDF
     patient_info = extract_patient_info(raw_text)
     st.session_state.patient_info = patient_info
     
-    # Display extracted patient info
     if patient_info["age"] > 0 or patient_info["name"] or patient_info["id"]:
         with st.expander("👤 Auto-Extracted Patient Information", expanded=True):
             col1, col2, col3 = st.columns(3)
@@ -303,7 +285,6 @@ if uploaded_file is not None:
                 if patient_info["id"]:
                     st.metric("Patient ID", patient_info["id"])
 
-    # Debug section - collapsed by default
     with st.expander("🐛 Debug Information", expanded=False):
         st.caption("📄 Page Extraction Details")
         for i in range(page_count):
@@ -338,7 +319,6 @@ if raw_text:
 
 # --- Serology Data Extraction ---
 def interpret_result(text):
-    """Interpret positive/negative keywords in text."""
     if any(word in text.lower() for word in ["not detected", "negative", "non reactive"]):
         return "Negative"
     elif any(word in text.lower() for word in ["detected", "positive", "reactive"]):
@@ -347,22 +327,17 @@ def interpret_result(text):
         return "Not done"
 
 def extract_serology(text):
-    """Extract serology test results from report text."""
     results = {}
 
-    # HIV
     hiv = re.search(r"HIV.*?(Not Detected|Detected|Negative|Positive|Reactive|Non Reactive)", text, re.IGNORECASE)
     results["Anti HIV antibody"] = interpret_result(hiv.group(1)) if hiv else "Not done"
 
-    # Hepatitis B surface antigen
     hbsag = re.search(r"Hepatitis B Surface antigen.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
     results["Hep B antigen (HBsAg)"] = interpret_result(hbsag.group(1)) if hbsag else "Not done"
 
-    # Hepatitis B surface antibody (HBsAb)
     hbsab = re.search(r"Hepatitis B Surface antibody.*?(\d+\.?\d*)\s*IU/L", text, re.IGNORECASE)
     results["Hep B antibody (HBsAb)"] = f"Positive ({hbsab.group(1)} IU/L)" if hbsab else "Not done"
 
-    # Hepatitis C antibody
     hcv = re.search(r"Hepatitis C antibody.*?(Not Detected|Detected|Negative|Positive)", text, re.IGNORECASE)
     results["Anti HCV antibody"] = interpret_result(hcv.group(1)) if hcv else "Not done"
 
@@ -379,10 +354,6 @@ if raw_text:
 
 # --- KT/V & URR 计算 ---
 results_dict = {row[0]: row[1] for row in results}
-
-dialysis_time = st.number_input("Dialysis Duration (hours)", min_value=1.0, max_value=8.0, value=4.0, step=0.5)
-uf_volume = st.number_input("Ultrafiltration Volume (L)", min_value=0.0, max_value=5.0, value=2.0, step=0.1)
-post_weight = st.number_input("Post-dialysis Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.5)
 
 kt_v = None
 URR = None
@@ -409,13 +380,11 @@ if raw_text and results and ai_enabled:
     st.markdown("---")
     st.subheader("🤖 AI-Powered Clinical Insights")
     
-    # Initialize chat history in session state
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
     if 'initial_analysis_done' not in st.session_state:
         st.session_state.initial_analysis_done = False
     
-    # Show rate limit status
     remaining = rate_limiter.get_remaining_requests()
     if remaining > 0:
         st.markdown(f'<div class="rate-limit-info">📊 AI requests remaining: <strong>{remaining}/15</strong> (resets every minute)</div>', unsafe_allow_html=True)
@@ -423,25 +392,19 @@ if raw_text and results and ai_enabled:
         wait_time = int(rate_limiter.get_wait_time())
         st.markdown(f'<div class="warning-box">⏱️ Rate limit reached. Please wait <strong>{wait_time}</strong> seconds before next request.</div>', unsafe_allow_html=True)
     
-    # Disable button if rate limit exceeded
     button_disabled = not rate_limiter.can_make_request()
     
-    # Initial Analysis Button
     if not st.session_state.initial_analysis_done:
         if st.button("🔍 Generate AI Analysis & Recommendations", type="primary", disabled=button_disabled):
             if rate_limiter.can_make_request():
                 with st.spinner("🧠 AI is analyzing the blood test results..."):
                     try:
-                        # Record this request
                         rate_limiter.add_request()
                         
-                        # Prepare data for AI
                         lab_results_text = df.to_string()
                         serology_text = pd.DataFrame(list(sero_results.items()), columns=["Test", "Result"]).to_string() if sero_results else "No serology data"
-                        
                         kt_v_text = f"KT/V: {kt_v}, URR: {URR}%" if kt_v and URR else "KT/V and URR not calculated"
                         
-                        # Build context
                         context = f"""
 Patient Context:
 - Age: {patient_age if patient_age > 0 else 'Not provided'}
@@ -483,9 +446,7 @@ Please provide:
 
 Please be specific, practical, and prioritize patient safety. Use clear language suitable for healthcare professionals."""
 
-                        # Call Gemini API with proper error handling
                         try:
-                            # First, try to list available models to find the right one
                             model_to_use = None
                             for m in genai.list_models():
                                 if 'generateContent' in m.supported_generation_methods:
@@ -495,13 +456,11 @@ Please be specific, practical, and prioritize patient safety. Use clear language
                             if model_to_use is None:
                                 raise Exception("No compatible Gemini models found. Please check your API key is from aistudio.google.com")
                             
-                            # Use the found model
                             model = genai.GenerativeModel(model_to_use)
                             response = model.generate_content(prompt)
                             ai_response = response.text
                             
                         except Exception as model_error:
-                            # Fallback: try common model names
                             model_names_to_try = [
                                 'gemini-1.5-flash',
                                 'gemini-1.5-pro', 
@@ -521,15 +480,13 @@ Please be specific, practical, and prioritize patient safety. Use clear language
                             if ai_response is None:
                                 raise Exception(f"Could not find working model. Original error: {model_error}")
                         
-                        # Store the initial analysis and context
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": ai_response
                         })
                         st.session_state.initial_analysis_done = True
-                        st.session_state.context = context  # Store context for follow-up questions
+                        st.session_state.context = context
                         
-                        # Update remaining requests display
                         new_remaining = rate_limiter.get_remaining_requests()
                         st.info(f"✅ Analysis complete. {new_remaining} requests remaining this minute.")
                         
@@ -542,21 +499,17 @@ Please be specific, practical, and prioritize patient safety. Use clear language
                 wait_time = int(rate_limiter.get_wait_time())
                 st.error(f"⏱️ Rate limit exceeded. Please wait {wait_time} seconds before making another request.")
     
-    # Chat Interface (shown after initial analysis)
     if st.session_state.initial_analysis_done:
         st.markdown("---")
         
-        # Display chat history
         for message in st.session_state.chat_history:
             if message["role"] == "user":
                 st.markdown(f'<div style="background-color: rgba(70, 130, 180, 0.3); padding: 1rem; border-radius: 10px; margin: 0.5rem 0; border-left: 4px solid #4682B4;">👤 <strong>You:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
             else:
                 st.markdown(f'<div class="ai-suggestion">🤖 <strong>AI Assistant:</strong><br>{message["content"]}</div>', unsafe_allow_html=True)
         
-        # Chat input
         st.markdown("### 💬 Ask Follow-up Questions")
         
-        # Create columns for input and button
         col1, col2 = st.columns([5, 1])
         
         with col1:
@@ -570,21 +523,17 @@ Please be specific, practical, and prioritize patient safety. Use clear language
         with col2:
             send_button = st.button("Send", type="primary", disabled=button_disabled, use_container_width=True)
         
-        # Handle new message
         if send_button and user_question:
             if rate_limiter.can_make_request():
                 with st.spinner("🤖 Thinking..."):
                     try:
-                        # Record this request
                         rate_limiter.add_request()
                         
-                        # Add user message to history
                         st.session_state.chat_history.append({
                             "role": "user",
                             "content": user_question
                         })
                         
-                        # Build conversation context
                         conversation = f"""
 You are an experienced nephrology and dialysis nurse assistant. Continue the conversation about this patient's blood test results.
 
@@ -592,13 +541,12 @@ You are an experienced nephrology and dialysis nurse assistant. Continue the con
 
 Previous conversation:
 """
-                        for msg in st.session_state.chat_history[-4:]:  # Last 2 exchanges
+                        for msg in st.session_state.chat_history[-4:]:
                             role = "Nurse" if msg["role"] == "user" else "Assistant"
                             conversation += f"\n{role}: {msg['content']}\n"
                         
                         conversation += f"\nNurse: {user_question}\n\nAssistant:"
                         
-                        # Call AI
                         model_to_use = None
                         for m in genai.list_models():
                             if 'generateContent' in m.supported_generation_methods:
@@ -609,13 +557,11 @@ Previous conversation:
                         response = model.generate_content(conversation)
                         ai_response = response.text
                         
-                        # Add AI response to history
                         st.session_state.chat_history.append({
                             "role": "assistant",
                             "content": ai_response
                         })
                         
-                        # Clear input and rerun
                         st.rerun()
                         
                     except Exception as e:
@@ -624,13 +570,11 @@ Previous conversation:
                 wait_time = int(rate_limiter.get_wait_time())
                 st.error(f"⏱️ Rate limit reached. Please wait {wait_time} seconds.")
         
-        # Clear chat button
         if st.button("🔄 Start New Analysis", type="secondary"):
             st.session_state.chat_history = []
             st.session_state.initial_analysis_done = False
             st.rerun()
         
-        # Add disclaimer at the bottom
         st.markdown("---")
         st.warning("⚠️ **Disclaimer**: This AI analysis is for informational purposes only and should not replace professional clinical judgment. Always consult with a physician for medical decisions.")
 
