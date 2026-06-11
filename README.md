@@ -15,7 +15,7 @@ This tool revolutionizes how dialysis units handle blood test analysis by combin
 ### 🎯 Key Features
 
 - **📄 Automated PDF Processing** - Upload blood test PDFs and extract text/results instantly using PyMuPDF (`fitz`).
-- **🤖 Interactive AI Clinical Insights** - Get intelligent initial analysis and ask follow-up questions via a conversational chat interface powered by Google Gemini AI.
+- **🤖 Interactive AI Clinical Insights** - Get intelligent initial analysis and ask follow-up questions via a conversational chat interface powered by AI.
 - **👤 Patient Information Extraction** - Automatically detect age, name, and patient ID directly from the report text.
 - **🧪 Comprehensive Lab Analysis** - Track 30+ blood markers with built-in reference ranges and multi-language alias support (English & Chinese).
 - **🧬 Serology Testing** - Automated HIV, Hepatitis B/C result interpretation and quantification tracking (e.g., HBsAb IU/L).
